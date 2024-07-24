@@ -43,44 +43,64 @@ def get_column_type(value):
 
 
 def generate_column_definitions(item, parent_key=None):
-    columns = []
+    column_names = []
+    column_types = []
+    values = []
 
     if isinstance(item, dict):
         for key, value in item.items():
             column_name = f"{parent_key}__{key}" if parent_key else key
-            columns.extend(generate_column_definitions(value, column_name))
+            (_column_names, _column_types, _values) = generate_column_definitions(
+                value, column_name
+            )
+            column_names.extend(_column_names)
+            column_types.extend(_column_types)
+            values.extend(_values)
 
     elif isinstance(item, tuple):
         for i, item in enumerate(item):
             item_key = "tuple" + "_" + str(i)
             item_name = f"{parent_key}.{item_key}" if parent_key else item_key
-            columns.extend(generate_column_definitions(item, item_name))
+            (_column_names, _column_types, _values) = generate_column_definitions(
+                item, item_name
+            )
+            column_names.extend(_column_names)
+            column_types.extend(_column_types)
+            values.extend(_values)
 
     else:
         column_type = get_column_type(item)
         if column_type is not None:
             column_name = parent_key if parent_key else "value"
-            columns.append((column_name, column_type, format_value(item)))
+            column_names.append(column_name)
+            column_types.append(column_type)
+            values.append(format_value(item))
 
-    return columns
+    return (column_names, column_types, values)
 
 
-def create_clickhouse_table(table_name, values):
+def create_clickhouse_table(table_name, column_names, column_types, values):
     additional_columns = [
         "block_number UInt64",
         "timestamp DateTime",
     ]
 
-    columns = list(map(lambda x: f"{escape_column_name(x[0])} {x[1]}", values))
+    columns = list(
+        map(
+            lambda x, y: f"{escape_column_name(x)} {
+                y}",
+            column_names,
+            column_types,
+        )
+    )
     all_columns = additional_columns + columns
     column_definitions = ", ".join(all_columns)
-    # Need to escape reserved column names
 
     # OrderBy block_number, timestamp, then any addresses
     order_by = ["block_number", "timestamp"]
-    for value in values:
-        if isinstance(value[2], str) and is_valid_ss58_address(value[2]):
-            order_by.append(value[0])
+    for i, value in enumerate(values):
+        if isinstance(value, str) and is_valid_ss58_address(value):
+            order_by.append(column_names[i])
 
     sql = f"""
     CREATE TABLE IF NOT EXISTS {table_name} (
@@ -108,23 +128,22 @@ class EventsShovel(ShovelBaseClass):
             event = e.value["event"]
             table_name = event["module_id"] + \
                 "_" + event["event_id"] + "_events"
-            columns = generate_column_definitions(event["attributes"])
+            (column_names, column_types, values) = generate_column_definitions(
+                event["attributes"]
+            )
 
             # Dynamically create table if not exists
             if not table_exists(table_name):
-                create_clickhouse_table(table_name, columns)
+                create_clickhouse_table(
+                    table_name, column_names, column_types, values)
 
             # Insert event data into table
-            event_values = list(map(lambda x: x[2], columns))
-            all_values = [n, block_timestamp] + event_values
+            all_values = [n, block_timestamp] + values
             buffer_insert(table_name, all_values)
-
-        logging.info(f"Scraped block {n} ({block_hash}): {
-            len(events.value)} event/s")
 
 
 def main():
-    EventsShovel().start()
+    EventsShovel(name="events").start()
 
 
 if __name__ == "__main__":

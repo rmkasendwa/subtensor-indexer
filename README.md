@@ -36,6 +36,7 @@ TODO
 - [ ] Establish a pattern for scraping block range chunks concurrently to speed up the initial sync
 - [ ] Implement checkpointing
 - [ ] Implement proper logging
+- [ ] Observability and alerting
 
 ## Dependencies
 

@@ -1,4 +1,5 @@
 import threading
+from time import sleep
 from shared.clickhouse.utils import get_clickhouse_client
 
 
@@ -16,7 +17,7 @@ def batch_insert_into_clickhouse_table(table, rows):
 
         get_clickhouse_client().execute(sql)
     except Exception as e:
-        print(f"Error inserting into {table}: e")
+        print(f"Error inserting into {table}: {e}")
         formatted_rows = ", ".join(
             f"({','.join(str(value) for value in row)})" for row in rows
         )
@@ -38,9 +39,13 @@ def buffer_insert(table_name, row):
 
 
 # Continuously flush the buffer
-def flush_buffer(executor):
+def flush_buffer(executor, started_cb, done_cb):
+    """
+    Continuously flush the buffer.
+    """
     global buffer
     while True:
+        started_cb()
         with buffer_lock:
             tasks = [(table_name, rows) for table_name, rows in buffer.items()]
             buffer.clear()
@@ -52,3 +57,5 @@ def flush_buffer(executor):
         ]
         for future in futures:
             future.result()
+        done_cb(len(tasks), sum(len(rows) for _, rows in tasks))
+        sleep(1)
