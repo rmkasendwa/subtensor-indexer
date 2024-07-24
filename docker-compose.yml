@@ -1,0 +1,53 @@
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.5.5.36-alpine
+
+    container_name: clickhouse
+    ports:
+      - "8123:8123" # HTTP interface for ClickHouse
+      - "9000:9000" # Native client interface for ClickHouse
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    env_file:
+      - .env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - app_network
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+    restart: on-failure
+
+  shovel_events:
+    build:
+      context: ./scraper_service
+      dockerfile: ./shovel_events/Dockerfile
+
+    container_name: shovel_events
+    depends_on:
+      - clickhouse
+    env_file:
+      - .env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - app_network
+    restart: on-failure
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    tty: true
+
+volumes:
+  clickhouse_data:
+
+networks:
+  app_network:
