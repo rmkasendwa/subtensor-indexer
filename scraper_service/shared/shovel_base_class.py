@@ -59,15 +59,18 @@ class ShovelBaseClass:
         self.last_buffer_flush_call_block_number = self.checkpoint_block_number
 
     def _buffer_flush_done(self, tables, rows):
+        if self.last_buffer_flush_call_block_number == 0:
+            return
+
         print(
             f"Block {self.last_buffer_flush_call_block_number}: Flushed {
                 rows} rows across {tables} tables to Clickhouse"
         )
 
         # Create checkpoint table if it doesn't exist
-        if not table_exists("shovel_checkpoint"):
+        if not table_exists("shovel_checkpoints"):
             query = """
-            CREATE TABLE IF NOT EXISTS shovel_checkpoint (
+            CREATE TABLE IF NOT EXISTS shovel_checkpoints (
                 shovel_name String,
                 block_number UInt64
             ) ENGINE = ReplacingMergeTree()
@@ -77,16 +80,16 @@ class ShovelBaseClass:
 
         # Update checkpoint
         buffer_insert(
-            "shovel_checkpoint",
+            "shovel_checkpoints",
             [f"'{self.name}'", self.last_buffer_flush_call_block_number],
         )
 
     def get_checkpoint(self):
-        if not table_exists("shovel_checkpoint"):
-            return 0
+        if not table_exists("shovel_checkpoints"):
+            return -1
         query = f"""
             SELECT block_number
-            FROM shovel_checkpoint
+            FROM shovel_checkpoints
             WHERE shovel_name = '{self.name}'
             ORDER BY block_number DESC
             LIMIT 1

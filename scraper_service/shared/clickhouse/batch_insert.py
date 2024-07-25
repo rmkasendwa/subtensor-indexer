@@ -12,19 +12,27 @@ def batch_insert_into_clickhouse_table(table, rows):
         formatted_rows = ", ".join(
             f"({','.join(str(value) for value in row)})" for row in rows
         )
-        sql = f"INSERT INTO {table} SETTINGS async_insert=1, wait_for_async_insert=1 VALUES {
-            formatted_rows}"
-
+        sql = f"INSERT INTO {
+            table} SETTINGS async_insert=1, wait_for_async_insert=1 VALUES {formatted_rows}"
         get_clickhouse_client().execute(sql)
     except Exception as e:
-        print(f"Error inserting into {table}: {e}")
-        formatted_rows = ", ".join(
-            f"({','.join(str(value) for value in row)})" for row in rows
-        )
-        sql = f"INSERT INTO {table} SETTINGS async_insert=1, wait_for_async_insert=1 VALUES {
-            formatted_rows}"
-        print(sql)
-        raise e
+        if len(rows) > 1:
+            mid = len(rows) // 2
+            print(
+                f"Error inserting into {table}: {
+                    e}. Retrying with smaller batches..."
+            )
+            batch_insert_into_clickhouse_table(table, rows[:mid])
+            batch_insert_into_clickhouse_table(table, rows[mid:])
+        else:
+            print(f"Error inserting single row into {table}: {e}")
+            formatted_rows = ", ".join(
+                f"({','.join(str(value) for value in row)})" for row in rows
+            )
+            sql = f"INSERT INTO {
+                table} SETTINGS async_insert=1, wait_for_async_insert=1 VALUES {formatted_rows}"
+            print(sql)
+            raise e
 
 
 def buffer_insert(table_name, row):

@@ -31,7 +31,8 @@ services:
 
     container_name: shovel_events
     depends_on:
-      - clickhouse
+      clickhouse:
+        condition: service_started
     env_file:
       - .env
     logging:
