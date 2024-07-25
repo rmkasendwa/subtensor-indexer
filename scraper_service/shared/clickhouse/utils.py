@@ -1,4 +1,5 @@
 import os
+import time
 from clickhouse_driver import Client
 from functools import lru_cache
 import threading
@@ -55,7 +56,7 @@ def table_exists(table_name):
     return len(result) > 0
 
 
-def get_clickhouse_client():
+def get_clickhouse_client(retries=10, delay=1):
     if not hasattr(thread_local, "client"):
         clickhouse_host = os.getenv("CLICKHOUSE_HOST")
         clickhouse_port = int(os.getenv("CLICKHOUSE_PORT", "8123"))
@@ -63,11 +64,24 @@ def get_clickhouse_client():
         clickhouse_user = os.getenv("CLICKHOUSE_USER")
         clickhouse_password = os.getenv("CLICKHOUSE_PASSWORD")
 
-        thread_local.client = Client(
-            host=clickhouse_host,
-            port=clickhouse_port,
-            user=clickhouse_user,
-            password=clickhouse_password,
-            database=clickhouse_db,
-        )
+        attempt = 0
+        while attempt < retries:
+            try:
+                thread_local.client = Client(
+                    host=clickhouse_host,
+                    port=clickhouse_port,
+                    user=clickhouse_user,
+                    password=clickhouse_password,
+                    database=clickhouse_db,
+                )
+                thread_local.client.execute("SELECT 1")
+                break
+            except Exception as e:
+                print(f"Error connecting to Clickhouse: {e}")
+                print(f"Retrying in {delay}s...")
+                attempt += 1
+                if attempt < retries:
+                    time.sleep(delay)
+                else:
+                    raise e
     return thread_local.client
