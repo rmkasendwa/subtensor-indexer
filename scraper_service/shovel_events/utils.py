@@ -70,8 +70,9 @@ def generate_column_definitions(item, parent_key=None):
 
 def create_clickhouse_table(table_name, column_names, column_types, values):
     additional_columns = [
-        "block_number UInt64",
-        "timestamp DateTime",
+        "block_number UInt64 CODEC(Delta, ZSTD)",
+        "timestamp DateTime CODEC(Delta, ZSTD)",
+        "event_index UInt64 CODEC(Delta(1), ZSTD)",
     ]
 
     columns = list(
@@ -85,8 +86,8 @@ def create_clickhouse_table(table_name, column_names, column_types, values):
     all_columns = additional_columns + columns
     column_definitions = ", ".join(all_columns)
 
-    # OrderBy block_number, timestamp, then any addresses
-    order_by = ["block_number", "timestamp"]
+    # OrderBy block_number, timestamp, event index, then any addresses
+    order_by = ["block_number", "timestamp", "event_index"]
     for i, value in enumerate(values):
         if isinstance(value, str) and is_valid_ss58_address(value):
             order_by.append(column_names[i])
@@ -113,7 +114,7 @@ def get_table_name(module_id, event_id, columns):
     'columns' must be passed as a tuple to be hashable.
     """
     event_id = f"{module_id}_{event_id}"
-    columns = ["block_number", "timestamp"] + list(columns)
+    columns = ["block_number", "timestamp", "event_index"] + list(columns)
     client = get_clickhouse_client()
 
     version = 0

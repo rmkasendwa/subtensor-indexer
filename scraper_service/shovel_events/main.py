@@ -30,6 +30,8 @@ class EventsShovel(ShovelBaseClass):
             block_hash=block_hash,
         )
 
+        # Needed to handle edge case of duplicate events in the same block
+        event_id = 0
         for e in events:
             event = e.value["event"]
             (column_names, column_types, values) = generate_column_definitions(
@@ -46,8 +48,13 @@ class EventsShovel(ShovelBaseClass):
                     table_name, column_names, column_types, values)
 
             # Insert event data into table
-            all_values = [n, block_timestamp] + values
+            all_values = [
+                n,
+                block_timestamp,
+                event_id,
+            ] + values
             buffer_insert(table_name, all_values)
+            event_id += 1
 
 
 def main():
