@@ -10,3 +10,10 @@ def get_substrate_client():
         url = os.getenv("SUBSTRATE_ARCHIVE_NODE_URL")
         thread_local.client = SubstrateInterface(url)
     return thread_local.client
+
+
+def reconnect_substrate():
+    print("Reconnecting Substrate...")
+    if hasattr(thread_local, "client"):
+        del thread_local.client
+    get_substrate_client()

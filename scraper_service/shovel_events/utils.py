@@ -144,6 +144,7 @@ def get_table_name(module_id, event_id, columns):
                 if different_version or column[0] != columns[i]:
                     different_version = True
                     break
+
             if different_version:
                 version += 1
             else:

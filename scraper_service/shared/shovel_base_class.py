@@ -1,5 +1,6 @@
-from shared.clickhouse.batch_insert import buffer_insert, flush_buffer
+from shared.clickhouse.batch_insert import buffer_insert, flush_buffer, batch_insert_into_clickhouse_table
 from shared.substrate import get_substrate_client
+from time import sleep
 from shared.clickhouse.utils import (
     get_clickhouse_client,
     table_exists,
@@ -39,16 +40,32 @@ class ShovelBaseClass:
         ).start()
 
         last_scraped_block_number = self.get_checkpoint()
-        logging.info(f"Starting from block {last_scraped_block_number + 1}")
+        logging.info(f"Last scraped block is {last_scraped_block_number}")
 
         # Create a list of block numbers to scrape
-        block_numbers = tqdm(
-            range(last_scraped_block_number + 1, finalized_block_number + 1)
-        )
+        while True:
+            block_numbers = tqdm(
+                range(last_scraped_block_number +
+                      1, finalized_block_number + 1)
+            )
 
-        for block_number in block_numbers:
-            self.process_block(block_number)
-            self.checkpoint_block_number = block_number
+            if len(block_numbers) > 0:
+                logging.info(
+                    f"Catching up {len(block_numbers)} blocks")
+                for block_number in block_numbers:
+                    self.process_block(block_number)
+                    self.checkpoint_block_number = block_number
+            else:
+                logging.info(
+                    "Already up to latest finalized block, checking again in 6s...")
+
+            # Make sure to sleep so buffer with checkpoint update is flushed to Clickhouse
+            # before trying again
+            sleep(6)
+            last_scraped_block_number = self.get_checkpoint()
+            finalized_block_hash = substrate.get_chain_finalised_head()
+            finalized_block_number = substrate.get_block_number(
+                finalized_block_hash)
 
     def process_block(self, n):
         raise NotImplementedError(
