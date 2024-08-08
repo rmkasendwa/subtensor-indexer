@@ -15,12 +15,14 @@ class ShovelBaseClass:
     checkpoint_block_number = 0
     last_buffer_flush_call_block_number = 0
     name = None
+    skip_interval = 1
 
-    def __init__(self, name):
+    def __init__(self, name, skip_interval=1):
         """
         Choose a unique name for the shovel.
         """
         self.name = name
+        self.skip_interval = skip_interval
 
     def start(self):
         print("Initialising Substrate client")
@@ -46,7 +48,7 @@ class ShovelBaseClass:
         while True:
             block_numbers = tqdm(
                 range(last_scraped_block_number +
-                      1, finalized_block_number + 1)
+                      1, finalized_block_number + 1, self.skip_interval)
             )
 
             if len(block_numbers) > 0:
@@ -57,11 +59,11 @@ class ShovelBaseClass:
                     self.checkpoint_block_number = block_number
             else:
                 logging.info(
-                    "Already up to latest finalized block, checking again in 6s...")
+                    "Already up to latest finalized block, checking again in 12s...")
 
             # Make sure to sleep so buffer with checkpoint update is flushed to Clickhouse
             # before trying again
-            sleep(6)
+            sleep(12)
             last_scraped_block_number = self.get_checkpoint()
             finalized_block_hash = substrate.get_chain_finalised_head()
             finalized_block_number = substrate.get_block_number(
