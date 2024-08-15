@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO,
 
 
 class BlockTimestampShovel(ShovelBaseClass):
-    table_name = "shovel_block_timestamp"
+    table_name = "shovel_block_timestamps"
 
     def process_block(self, n):
         do_process_block(self, n)
