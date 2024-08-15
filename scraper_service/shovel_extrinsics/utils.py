@@ -99,13 +99,15 @@ def create_clickhouse_table(table_name, column_names, column_types):
     )
     column_definitions = ", ".join(columns)
 
-    order_by = ["call_module", "call_function",
-                "block_number", "timestamp"]
+    order_by = [
+        "call_module", "call_function", "timestamp", "extrinsic_index"
+    ]
 
     sql = f"""
     CREATE TABLE IF NOT EXISTS {table_name} (
         {column_definitions}
     ) ENGINE = ReplacingMergeTree()
+    PARTITION BY toYYYYMM(timestamp)
     ORDER BY ({", ".join(order_by)})
     """
 
@@ -132,7 +134,7 @@ def get_table_name(module_id, function_id, columns):
     MAX_VERSIONS = 50
 
     while version < MAX_VERSIONS:
-        table_name = f"extrinsics_shovel_{extrinsic_id}_v{version}"
+        table_name = f"shovel_extrinsics_{extrinsic_id}_v{version}"
 
         # If the stable doesn't exist, we will create it for this version of the extrinsic we are
         # processing
