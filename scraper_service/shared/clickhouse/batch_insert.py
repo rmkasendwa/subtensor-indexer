@@ -66,4 +66,4 @@ def flush_buffer(executor, started_cb, done_cb):
         for future in futures:
             future.result()
         done_cb(len(tasks), sum(len(rows) for _, rows in tasks))
-        sleep(5)
+        sleep(1)
