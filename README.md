@@ -20,8 +20,15 @@ All a shoves needs to define is a function to execute for every block number. Sh
 
 ## Shovels
 
+- [x] Timestamp Shovel
 - [x] Events Shovel
-- [ ] Stake Map Shovel (WIP)
+- [x] Extrinsics Shovel
+- [x] Hotkey Owner Map Shovel
+- [ ] Account Stake Map Shovel
+- [ ] Account Balances Map Shovel
+- [ ] Aggregate Stake Events Shovel
+- [ ] Aggregate Balance Events Shovel
+- [ ] Metagraph Shovel
 
 ### Implementors Guide
 
