@@ -86,8 +86,8 @@ def create_clickhouse_table(table_name, column_names, column_types, values):
     all_columns = additional_columns + columns
     column_definitions = ", ".join(all_columns)
 
-    # OrderBy block_number, timestamp, event index, then any addresses
-    order_by = ["block_number", "timestamp", "event_index"]
+    # OrderBy timestamp, event index, then any addresses
+    order_by = ["timestamp", "event_index"]
     for i, value in enumerate(values):
         if isinstance(value, str) and is_valid_ss58_address(value):
             order_by.append(column_names[i])
@@ -96,6 +96,7 @@ def create_clickhouse_table(table_name, column_names, column_types, values):
     CREATE TABLE IF NOT EXISTS {table_name} (
         {column_definitions}
     ) ENGINE = ReplacingMergeTree()
+    PARTITION BY toYYYYMM(timestamp)
     ORDER BY ({", ".join(order_by)})
     """
 
@@ -123,7 +124,7 @@ def get_table_name(module_id, event_id, columns):
     MAX_VERSIONS = 50
 
     while version < MAX_VERSIONS:
-        table_name = f"events_shovel_{event_id}_v{version}"
+        table_name = f"shovel_events_{event_id}_v{version}"
 
         # If the stable doesn't exist, we will create it for this version of the event we are
         # processing
