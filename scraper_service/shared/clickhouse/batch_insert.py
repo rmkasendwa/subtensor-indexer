@@ -43,7 +43,12 @@ def buffer_insert(table_name, row):
     with buffer_lock:
         if table_name not in buffer:
             buffer[table_name] = []
+
         buffer[table_name].append(row)
+
+    # Throttle if buffer is getting too large
+    while table_name in buffer and len(buffer[table_name]) > 1_000_000:
+        sleep(1)
 
 
 # Continuously flush the buffer
