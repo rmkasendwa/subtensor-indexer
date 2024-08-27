@@ -1,4 +1,5 @@
 import os
+from functools import lru_cache
 from substrateinterface import SubstrateInterface
 import threading
 
@@ -17,3 +18,8 @@ def reconnect_substrate():
     if hasattr(thread_local, "client"):
         del thread_local.client
     get_substrate_client()
+
+
+@lru_cache
+def create_storage_key_cached(pallet, storage, args):
+    return get_substrate_client().create_storage_key(pallet, storage, list(args))
