@@ -8,10 +8,6 @@ edition = "2021"
 name = "rust_bindings"
 crate-type = ["cdylib"]
 
-[[bin]]
-name = "your_binary_name"
-path = "src/lib.rs"
-
 [dependencies]
 pyo3 = "0.22.0"
 subxt = "0.37.0"
