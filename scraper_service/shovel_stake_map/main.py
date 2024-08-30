@@ -1,16 +1,18 @@
-from functools import lru_cache
-import time
-from datetime import datetime
-from shared.block_metadata import get_block_metadata
-from shared.clickhouse.batch_insert import buffer_insert
-from shared.shovel_base_class import ShovelBaseClass
-from shared.substrate import get_substrate_client
+from collections import defaultdict
+import logging
 from shared.clickhouse.utils import (
     get_clickhouse_client,
     table_exists,
 )
-import logging
-from collections import defaultdict
+from shared.substrate import get_substrate_client
+from shared.shovel_base_class import ShovelBaseClass
+from shared.clickhouse.batch_insert import buffer_insert
+from shared.block_metadata import get_block_metadata
+from datetime import datetime
+import time
+import rust_bindings
+from tqdm import tqdm
+from functools import lru_cache
 
 
 logging.basicConfig(level=logging.INFO,
@@ -105,29 +107,20 @@ def do_process_block(n, table_name):
     hotkeys_needing_update = set()
 
     # Get pending emission amount for every subnet
-    result = substrate.query_map(
-        'SubtensorModule', 'PendingEmission',
-        block_hash=block_hash,
-        page_size=1000
-    )
-    for subnet_id_scale, pending_emission_scale in result:
-        pending_emission = pending_emission_scale.value
-        subnet_id = subnet_id_scale.value
+    result = rust_bindings.query_map_pending_emission(block_hash)
+    for subnet_id, pending_emission in result:
         if (subnet_id not in prev_pending_emissions) or pending_emission == 0 and prev_pending_emissions[subnet_id] != 0:
             print(
                 f"Refreshing all hotkeys from subnet {
                     subnet_id} due to update..."
             )
-            subnet_hotkeys = substrate.query_map(
-                "SubtensorModule",
-                "Keys",
-                params=[subnet_id],
-                block_hash=block_hash,
-                page_size=1000
+            subnet_hotkeys = rust_bindings.query_subnet_hotkeys(
+                block_hash, subnet_id
             )
+
             count = 0
-            for (key, hotkey) in subnet_hotkeys:
-                hotkeys_needing_update.add(hotkey.value)
+            for (neuron_id, hotkey) in subnet_hotkeys:
+                hotkeys_needing_update.add(hotkey)
                 count += 1
             print(
                 f"Found {count} hotkeys for {subnet_id}"
@@ -163,16 +156,11 @@ def do_process_block(n, table_name):
         hotkeys_needing_update.add(r[0])
 
     # Get agg stake events for this block
-    for (i, hotkey) in enumerate(hotkeys_needing_update):
-        r = get_substrate_client().query_map(
-            "SubtensorModule",
-            "Stake",
-            block_hash=block_hash,
-            page_size=1000,
-            params=[hotkey],
-        )
-        for (coldkey_scale, stake) in r:
-            coldkey = coldkey_scale.value
+    r = rust_bindings.query_hotkeys_stakes(
+        block_hash, list(hotkeys_needing_update)
+    )
+    for (hotkey, coldkey_stakes) in r:
+        for (coldkey, stake) in coldkey_stakes:
             stake_map[(hotkey, coldkey)] = stake
 
     for ((hotkey, coldkey), stake) in stake_map.items():
