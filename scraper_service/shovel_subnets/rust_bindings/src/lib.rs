@@ -1,3 +1,4 @@
+use crate::subtensor::runtime_types::pallet_subtensor::pallet::AxonInfo;
 use deadpool::unmanaged;
 use futures::future::join_all;
 use parity_scale_codec::Decode;
@@ -5,7 +6,7 @@ use pyo3::prelude::*;
 use std::{collections::HashMap, sync::Arc};
 use subxt::{
     backend::{legacy::LegacyBackend, rpc::RpcClient},
-    utils::H256,
+    utils::{AccountId32, H256},
     OnlineClient, PolkadotConfig,
 };
 use tokio;
@@ -17,24 +18,75 @@ pub mod subtensor {}
 #[derive(Debug, Default)]
 #[allow(unused)]
 struct NeuronInfo {
+    #[pyo3(get)]
     subnet_id: u16,
+    #[pyo3(get)]
     neuron_id: u16,
 
-    block_hash: String,
-    hotkey: String,
+    #[pyo3(get)]
+    pub block_hash: String,
+    #[pyo3(get)]
+    pub hotkey: String,
+    #[pyo3(get)]
     pub active: bool,
 
+    #[pyo3(get)]
     pub rank: u16,
+    #[pyo3(get)]
     pub emission: u64,
+    #[pyo3(get)]
     pub incentive: u16,
+    #[pyo3(get)]
     pub consensus: u16,
+    #[pyo3(get)]
     pub trust: u16,
+    #[pyo3(get)]
     pub validator_trust: u16,
+    #[pyo3(get)]
     pub dividends: u16,
+    #[pyo3(get)]
     pub weights: Vec<(u16, u16)>,
 
+    #[pyo3(get)]
     pub last_update: u64,
+    #[pyo3(get)]
     pub pruning_scores: u16,
+}
+
+#[pyclass]
+#[allow(dead_code)]
+struct PyClassAxonInfo {
+    #[pyo3(get)]
+    pub block: u64,
+    #[pyo3(get)]
+    pub version: u32,
+    #[pyo3(get)]
+    pub ip: u128,
+    #[pyo3(get)]
+    pub port: u16,
+    #[pyo3(get)]
+    pub ip_type: u8,
+    #[pyo3(get)]
+    pub protocol: u8,
+    #[pyo3(get)]
+    pub placeholder1: u8,
+    #[pyo3(get)]
+    pub placeholder2: u8,
+}
+
+impl Into<PyClassAxonInfo> for AxonInfo {
+    fn into(self) -> PyClassAxonInfo {
+        PyClassAxonInfo {
+            block: self.block,
+            version: self.version,
+            ip: self.ip,
+            port: self.port,
+            ip_type: self.ip_type,
+            protocol: self.protocol,
+            placeholder1: self.placeholder1,
+            placeholder2: self.placeholder2,
+        }
+    }
 }
 
 macro_rules! fetch_and_process_kvs {
@@ -67,7 +119,6 @@ async fn get_api() -> OnlineClient<PolkadotConfig> {
     OnlineClient::from_backend(Arc::new(backend)).await.unwrap()
 }
 
-/// Formats the sum of two numbers as string.
 async fn query_neuron_info_inner(block_hash: String) -> PyResult<(Vec<NeuronInfo>, Vec<String>)> {
     let start = std::time::Instant::now();
     let block_hash = hex::decode(block_hash.trim_start_matches("0x")).expect("Decoding failed");
@@ -300,6 +351,38 @@ async fn query_neuron_info_inner(block_hash: String) -> PyResult<(Vec<NeuronInfo
     Ok((neuron_map.into_values().collect(), hotkeys))
 }
 
+async fn query_axons_inner(
+    block_hash: String,
+) -> PyResult<HashMap<(u16, String), PyClassAxonInfo>> {
+    let api = get_api().await;
+    let query = subtensor::storage().subtensor_module().axons_iter();
+    let block_hash =
+        hex::decode(block_hash.trim_start_matches("0x")).expect("Decoding block_hash failed");
+    let block_hash = H256::from_slice(&block_hash);
+
+    let mut iter = api.storage().at(block_hash).iter(query).await.unwrap();
+    let mut kvs = HashMap::new();
+
+    while let Some(Ok(kv)) = iter.next().await {
+        let last_32_bytes: &[u8; 32] = &kv.key_bytes[kv.key_bytes.len() - 32..].try_into().unwrap();
+        let mut last_50th_to_48th_bytes =
+            &kv.key_bytes[kv.key_bytes.len() - 50..kv.key_bytes.len() - 48];
+        let subnet_id = u16::decode(&mut last_50th_to_48th_bytes).unwrap();
+        let hotkey = AccountId32::from(last_32_bytes.clone()).to_string();
+
+        kvs.insert((subnet_id, hotkey), kv.value.into());
+    }
+
+    Ok(kvs)
+}
+
+#[pyfunction]
+fn query_axons(block_hash: String) -> PyResult<HashMap<(u16, String), PyClassAxonInfo>> {
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(query_axons_inner(block_hash))
+}
+
 #[pyfunction]
 fn query_neuron_info(block_hash: String) -> PyResult<(Vec<NeuronInfo>, Vec<String>)> {
     tokio::runtime::Runtime::new()
@@ -311,5 +394,6 @@ fn query_neuron_info(block_hash: String) -> PyResult<(Vec<NeuronInfo>, Vec<Strin
 #[pymodule]
 fn rust_bindings(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(query_neuron_info, m)?)?;
+    m.add_function(wrap_pyfunction!(query_axons, m)?)?;
     Ok(())
 }
