@@ -53,7 +53,6 @@ stake_map = dict()
 
 
 def do_process_block(n, table_name):
-    substrate = get_substrate_client()
     # Create table if it doesn't exist
     if not table_exists(table_name):
         query = f"""
@@ -87,8 +86,8 @@ def do_process_block(n, table_name):
             r.coldkey AS coldkey,
             l.tuple_1 AS amount,
             'remove' AS operation
-        FROM test_db.shovel_hotkey_owner_map AS r
-        INNER JOIN test_db.shovel_events_SubtensorModule_StakeRemoved_v0 AS l ON (l.tuple_0 = r.hotkey) AND (l.timestamp = r.timestamp)
+        FROM shovel_hotkey_owner_map AS r
+        INNER JOIN shovel_events_SubtensorModule_StakeRemoved_v0 AS l ON (l.tuple_0 = r.hotkey) AND (l.timestamp = r.timestamp)
         UNION ALL
         SELECT
             sa.block_number,
@@ -97,8 +96,8 @@ def do_process_block(n, table_name):
             r.coldkey,
             sa.tuple_1 AS amount,
             'add' AS operation
-        FROM test_db.shovel_hotkey_owner_map AS r
-        INNER JOIN test_db.shovel_events_SubtensorModule_StakeAdded_v0 AS sa ON (sa.tuple_0 = r.hotkey) AND (sa.timestamp = r.timestamp);
+        FROM shovel_hotkey_owner_map AS r
+        INNER JOIN shovel_events_SubtensorModule_StakeAdded_v0 AS sa ON (sa.tuple_0 = r.hotkey) AND (sa.timestamp = r.timestamp);
         """
         get_clickhouse_client().execute(query)
 
@@ -129,10 +128,10 @@ def do_process_block(n, table_name):
         prev_pending_emissions[subnet_id] = pending_emission
 
     # Check if we're up to date
-    events_synced_block_query = "SELECT block_number FROM test_db.shovel_checkpoints FINAL WHERE shovel_name = 'events';"
+    events_synced_block_query = "SELECT block_number FROM shovel_checkpoints FINAL WHERE shovel_name = 'events';"
     events_synced_block = get_clickhouse_client().execute(
         events_synced_block_query)[0][0]
-    hotkey_owner_map_synced_block_query = "SELECT block_number FROM test_db.shovel_checkpoints FINAL WHERE shovel_name = 'hotkey_owner_map';"
+    hotkey_owner_map_synced_block_query = "SELECT block_number FROM shovel_checkpoints FINAL WHERE shovel_name = 'hotkey_owner_map';"
     hotkey_owner_map_synced_block = get_clickhouse_client().execute(
         hotkey_owner_map_synced_block_query)[0][0]
 
@@ -148,7 +147,7 @@ def do_process_block(n, table_name):
     dt_object = datetime.fromtimestamp(block_timestamp)
     formatted_date = dt_object.strftime("%Y-%m-%d %H:%M:%S")
     distinct_hotkeys_query = f"""
-        SELECT DISTINCT(hotkey) from test_db.agg_stake_events WHERE timestamp = '{formatted_date}'
+        SELECT DISTINCT(hotkey) from agg_stake_events WHERE timestamp = '{formatted_date}'
     """
     distinct_hotkeys = get_clickhouse_client().execute(distinct_hotkeys_query)
 
