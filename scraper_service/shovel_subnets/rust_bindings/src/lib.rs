@@ -43,9 +43,13 @@ struct NeuronInfo {
     #[pyo3(get)]
     pub validator_trust: u16,
     #[pyo3(get)]
+    pub validator_permit: bool,
+    #[pyo3(get)]
     pub dividends: u16,
     #[pyo3(get)]
     pub weights: Vec<(u16, u16)>,
+    #[pyo3(get)]
+    pub bonds: Vec<(u16, u16)>,
 
     #[pyo3(get)]
     pub last_update: u64,
@@ -93,16 +97,12 @@ macro_rules! fetch_and_process_kvs {
     ($api_pool:expr, $block_hash:expr, $query:expr, $label:expr) => {{
         async {
             let api = $api_pool.get().await.unwrap();
-            let start = std::time::Instant::now();
             let mut iter = api.storage().at($block_hash).iter($query).await.unwrap();
             let mut kvs = Vec::new();
 
             while let Some(Ok(kv)) = iter.next().await {
                 kvs.push((kv.key_bytes, kv.value));
             }
-            let end = std::time::Instant::now();
-            println!("{} Time elapsed: {:?}", $label, end - start);
-
             kvs
         }
     }};
@@ -139,10 +139,13 @@ async fn query_neuron_info_inner(block_hash: String) -> PyResult<(Vec<NeuronInfo
     let validator_trust_query = subtensor::storage()
         .subtensor_module()
         .validator_trust_iter();
+    let validator_permit_query = subtensor::storage()
+        .subtensor_module()
+        .validator_permit_iter();
     let weights_query = subtensor::storage().subtensor_module().weights_iter();
+    let bonds_query = subtensor::storage().subtensor_module().bonds_iter();
 
     // not important
-    // let bonds_query = subtensor::storage().subtensor_module().bonds_iter();
     // let stake_query = subtensor::storage().subtensor_module().stake_iter();
     // let prometheus_query = subtensor::storage().subtensor_module().prometheus_iter();
 
@@ -166,7 +169,9 @@ async fn query_neuron_info_inner(block_hash: String) -> PyResult<(Vec<NeuronInfo
         last_update_kvs,
         pruning_scores_kvs,
         validator_trust_kvs,
+        validator_permit_kvs,
         weights_kvs,
+        bonds_kvs,
     ) = tokio::join!(
         fetch_and_process_kvs!(&api_pool, block_hash, keys_query, "keys"),
         fetch_and_process_kvs!(&api_pool, block_hash, active_query, "active"),
@@ -189,7 +194,14 @@ async fn query_neuron_info_inner(block_hash: String) -> PyResult<(Vec<NeuronInfo
             validator_trust_query,
             "validator_trust"
         ),
+        fetch_and_process_kvs!(
+            &api_pool,
+            block_hash,
+            validator_permit_query,
+            "validator_permit"
+        ),
         fetch_and_process_kvs!(&api_pool, block_hash, weights_query, "weights"),
+        fetch_and_process_kvs!(&api_pool, block_hash, bonds_query, "bonds"),
     );
     let end = std::time::Instant::now();
     println!("Get main stuff elapsed: {:?}", end - start);
@@ -336,6 +348,18 @@ async fn query_neuron_info_inner(block_hash: String) -> PyResult<(Vec<NeuronInfo
         }
     }
 
+    // Set validator_permit
+    for (key, value) in validator_permit_kvs {
+        let mut last_two_bytes = &key[key.len() - 2..];
+        let subnet_id = u16::decode(&mut last_two_bytes).unwrap();
+        for (neuron_id, validator_permit) in value.iter().enumerate() {
+            neuron_map
+                .get_mut(&(subnet_id, neuron_id as u16))
+                .expect("Subnet neuron not initialized!")
+                .validator_permit = *validator_permit;
+        }
+    }
+
     // Set Weights
     for (key, weights) in weights_kvs {
         let mut second_last_two_bytes = &key[key.len() - 4..key.len() - 2];
@@ -346,6 +370,18 @@ async fn query_neuron_info_inner(block_hash: String) -> PyResult<(Vec<NeuronInfo
             .get_mut(&(subnet_id, neuron_id as u16))
             .expect("Subnet neuron not initialized!")
             .weights = weights.to_owned();
+    }
+
+    // Set bonds
+    for (key, bonds) in bonds_kvs {
+        let mut second_last_two_bytes = &key[key.len() - 4..key.len() - 2];
+        let mut last_two_bytes = &key[key.len() - 2..];
+        let subnet_id = u16::decode(&mut second_last_two_bytes).unwrap();
+        let neuron_id = u16::decode(&mut last_two_bytes).unwrap();
+        neuron_map
+            .get_mut(&(subnet_id, neuron_id as u16))
+            .expect("Subnet neuron not initialized!")
+            .bonds = bonds.to_owned();
     }
 
     Ok((neuron_map.into_values().collect(), hotkeys))
