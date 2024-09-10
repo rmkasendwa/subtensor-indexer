@@ -7,14 +7,17 @@ from shared.clickhouse.utils import (
 )
 
 
-def format_value(value):
+def format_value(value, column_type=None):
     if value is None:
         return "NULL"
     elif isinstance(value, str):
         # SQL requires strings to be wrapped in single quotes
         return f"'{value}'"
     elif isinstance(value, list):
-        return f"'{json.dumps(value)}'"
+        if isinstance(column_type, str) and "Array" in column_type:
+            return value
+        else:
+            return f"'{json.dumps(value)}'"
     else:
         return value
 
@@ -83,7 +86,7 @@ def generate_column_definitions(item, parent_key, item_type=None):
             column_name = parent_key
             column_names.append(f"arg_{column_name}")
             column_types.append(column_type)
-            values.append(format_value(item))
+            values.append(format_value(item, column_type))
 
     return (column_names, column_types, values)
 
