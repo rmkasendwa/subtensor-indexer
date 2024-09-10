@@ -126,6 +126,13 @@ def refresh_axon_cache(block_timestamp, block_hash, block_number):
 
 coldkey_stake_cache = {}
 
+hotkey_owner_map_synced_block = -1
+
+stake_map_synced_block = -1
+
+stake_map_synced_block_query = "SELECT block_number FROM shovel_checkpoints FINAL WHERE shovel_name = 'stake_double_map';"
+hotkey_owner_map_synced_block_query = "SELECT block_number FROM shovel_checkpoints FINAL WHERE shovel_name = 'hotkey_owner_map';"
+
 
 def batch(iterable, n=1):
     length = len(iterable)
@@ -135,18 +142,14 @@ def batch(iterable, n=1):
 
 def get_coldkeys_and_stakes(hotkeys, block_timestamp, block_hash, block_number):
     global coldkey_stake_cache
+    global stake_map_synced_block
+    global hotkey_owner_map_synced_block
 
-    stake_map_synced_block_query = "SELECT block_number FROM shovel_checkpoints FINAL WHERE shovel_name = 'stake_double_map';"
-    hotkey_owner_map_synced_block = get_clickhouse_client().execute(
-        stake_map_synced_block_query)[0][0]
-    hotkey_owner_map_synced_block_query = "SELECT block_number FROM shovel_checkpoints FINAL WHERE shovel_name = 'hotkey_owner_map';"
-    hotkey_owner_map_synced_block = get_clickhouse_client().execute(
-        hotkey_owner_map_synced_block_query)[0][0]
-
-    while (hotkey_owner_map_synced_block < block_number or hotkey_owner_map_synced_block < block_number):
-        print("Waiting for stake_double_map and hotkey_owner_map tables to sync...")
-        time.sleep(60)
-        hotkey_owner_map_synced_block = get_clickhouse_client().execute(
+    while (hotkey_owner_map_synced_block < block_number or stake_map_synced_block < block_number):
+        if hotkey_owner_map_synced_block > -1 and stake_map_synced_block > -1:
+            print("Waiting for stake_double_map and hotkey_owner_map tables to sync...")
+            time.sleep(1)
+        stake_map_synced_block = get_clickhouse_client().execute(
             stake_map_synced_block_query)[0][0]
         hotkey_owner_map_synced_block = get_clickhouse_client().execute(
             hotkey_owner_map_synced_block_query)[0][0]
@@ -156,6 +159,10 @@ def get_coldkeys_and_stakes(hotkeys, block_timestamp, block_hash, block_number):
         if (block_timestamp, hotkey) not in coldkey_stake_cache:
             need_to_query.append(hotkey)
 
+    # track the block timestamps because we need them to fill in zero stake
+    # amount cache later
+    block_timestamps = set()
+    block_timestamps.add(block_timestamp)
     if len(need_to_query) > 0:
         clickhouse = get_clickhouse_client()
         batch_size = 1000
@@ -179,12 +186,14 @@ def get_coldkeys_and_stakes(hotkeys, block_timestamp, block_hash, block_number):
                     INNER JOIN test_db.shovel_stake_double_map AS s
                     ON o.timestamp = s.timestamp AND o.coldkey = s.coldkey AND o.hotkey = s.hotkey
                     WHERE hotkey IN {hotkeys_str}
-                    AND timestamp >= '{formatted_date}' AND timestamp < addHours('{formatted_date}', 1)
+                    AND timestamp >= '{formatted_date}' AND timestamp < addMinutes('{formatted_date}', 30)
                 """
             r = clickhouse.execute(query)
             responses.extend(r)
         for response in responses:
-            coldkey_stake_cache[(int(response[0].timestamp()), response[1])] = (
+            timestamp = int(response[0].timestamp())
+            block_timestamps.add(timestamp)
+            coldkey_stake_cache[(timestamp, response[1])] = (
                 response[2], response[3]
             )
 
@@ -210,7 +219,8 @@ def get_coldkeys_and_stakes(hotkeys, block_timestamp, block_hash, block_number):
                         stake} but not in Clickhouse"
                 )
                 exit(0)
-            coldkey_stake_cache[(block_timestamp, hotkey)] = (coldkey, stake)
+            for t in block_timestamps:
+                coldkey_stake_cache[(t, hotkey)] = (coldkey, stake)
 
         # we should have stakes for all hotkeys now!
         coldkey, stake = coldkey_stake_cache[(block_timestamp, hotkey)]
