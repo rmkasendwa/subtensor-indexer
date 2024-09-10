@@ -15,15 +15,15 @@ RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Build and cache Rust deps
-COPY ./shovel_daily_stake/rust_bindings/Cargo.toml /app/rust_bindings/Cargo.toml
-COPY ./shovel_daily_stake/rust_bindings/Cargo.lock /app/rust_bindings/Cargo.lock
-COPY ./shovel_daily_stake/rust_bindings/pyproject.toml /app/rust_bindings/pyproject.toml
-WORKDIR /app/rust_bindings
-RUN mkdir src && echo "fn main() {}" > src/lib.rs
-RUN cargo fetch
-RUN maturin build --release
-RUN rm src/lib.rs
-RUN rm -r /app/rust_bindings/target/wheels
+# COPY ./shovel_daily_stake/rust_bindings/Cargo.toml /app/rust_bindings/Cargo.toml
+# COPY ./shovel_daily_stake/rust_bindings/Cargo.lock /app/rust_bindings/Cargo.lock
+# COPY ./shovel_daily_stake/rust_bindings/pyproject.toml /app/rust_bindings/pyproject.toml
+# WORKDIR /app/rust_bindings
+# RUN mkdir src && echo "fn main() {}" > src/lib.rs
+# RUN cargo fetch
+# RUN maturin build --release
+# RUN rm src/lib.rs
+# RUN rm -r /app/rust_bindings/target/wheels
 
 # Copy the rest of the Rust bindings and build
 WORKDIR /app
