@@ -156,7 +156,7 @@ services:
       - "host.docker.internal:host-gateway"
     tty: true
 
-   shovel_daily_stake:
+  shovel_daily_stake:
     build:
       context: ./scraper_service
       dockerfile: ./shovel_daily_stake/Dockerfile
