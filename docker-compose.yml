@@ -156,6 +156,28 @@ services:
       - "host.docker.internal:host-gateway"
     tty: true
 
+  shovel_daily_stake:
+    build:
+      context: ./scraper_service
+      dockerfile: ./shovel_daily_stake/Dockerfile
+    container_name: shovel_daily_stake
+    depends_on:
+      clickhouse:
+        condition: service_started
+    env_file:
+      - .env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - app_network
+    restart: on-failure
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    tty: true
+
   # shovel_balance_map:
   #   build:
   #     context: ./scraper_service
