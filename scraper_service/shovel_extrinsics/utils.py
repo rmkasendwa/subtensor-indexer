@@ -22,7 +22,7 @@ def format_value(value, column_type=None):
         return value
 
 
-def get_column_type(value, value_type=None):
+def get_column_type(value, value_type=None, key=None):
     if isinstance(value, str):
         return "String"
     elif isinstance(value, int):
@@ -46,6 +46,8 @@ def get_column_type(value, value_type=None):
             return "Array(UInt32)"
         elif value_type == "Vec<u64>":
             return "Array(UInt64)"
+        elif key in type_map:
+            return type_map[key]
         else:
             print("Empty list and don't know what column type to use!")
             exit(1)
@@ -54,6 +56,16 @@ def get_column_type(value, value_type=None):
     else:
         print(f"Unhandled type: {type(value)}")
         return "String"
+
+
+# map of arg types when they cannot be derived from the value
+# maps the key to the type
+type_map = {
+    "info__additional": "Array(Tuple(String, String))",
+    "info__legal__Raw0": "String",
+    "info__riot__Raw0": "String",
+    "info__image__Raw0": "String"
+}
 
 
 def generate_column_definitions(item, parent_key, item_type=None):
@@ -81,7 +93,7 @@ def generate_column_definitions(item, parent_key, item_type=None):
             column_types.extend(_column_types)
             values.extend(_values)
     else:
-        column_type = get_column_type(item, item_type)
+        column_type = get_column_type(item, item_type, parent_key)
         if column_type is not None:
             column_name = parent_key
             column_names.append(f"arg_{column_name}")
