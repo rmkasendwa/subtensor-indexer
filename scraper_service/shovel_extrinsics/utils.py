@@ -49,7 +49,10 @@ def get_column_type(value, value_type=None, key=None):
         elif key in type_map:
             return type_map[key]
         else:
-            print("Empty list and don't know what column type to use!")
+            print(
+                f"Empty list and don't know what column type to use for key {
+                    key}!"
+            )
             exit(1)
     elif value is None:
         return None
@@ -64,7 +67,9 @@ type_map = {
     "info__additional": "Array(Tuple(String, String))",
     "info__legal__Raw0": "String",
     "info__riot__Raw0": "String",
-    "info__image__Raw0": "String"
+    "info__image__Raw0": "String",
+    "info__email__Raw0": "String",
+    "info__twitter__Raw0": "String",
 }
 
 
