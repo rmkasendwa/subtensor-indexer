@@ -1,7 +1,6 @@
 services:
   clickhouse:
     image: clickhouse/clickhouse-server:24.5.5.36-alpine
-
     container_name: clickhouse
     ports:
       - "8123:8123" # HTTP interface for ClickHouse
@@ -151,7 +150,7 @@ services:
         max-file: "3"
     networks:
       - app_network
-    restart: on-failure
+    restart: always
     extra_hosts:
       - "host.docker.internal:host-gateway"
     tty: true

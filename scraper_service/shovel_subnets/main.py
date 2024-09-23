@@ -1,20 +1,36 @@
+from shared.substrate import reconnect_substrate
+from tenacity import retry, stop_after_attempt, wait_fixed
 from shared.block_metadata import get_block_metadata
 from shared.clickhouse.batch_insert import buffer_insert
 from shared.shovel_base_class import ShovelBaseClass
 import logging
 import rust_bindings
+import time
 from shovel_subnets.utils import create_table, get_axon_cache, get_coldkeys_and_stakes, refresh_axon_cache, default_axon
 
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(process)d %(message)s")
 
+# temporary hack around memory leak: restart shovel every 10mins
+# TODO: find and fix the actual issue causing the leak!
+start_time = time.time()
+
 
 class SubnetsShovel(ShovelBaseClass):
     def process_block(self, n):
+        cur_time = time.time()
+        if cur_time - start_time > 600:
+            logging.info("Restarting shovel to avoid memory leak.")
+            exit(0)
         do_process_block(n)
 
 
+@retry(
+    wait=wait_fixed(2),
+    before_sleep=lambda _: reconnect_substrate(),
+    stop=stop_after_attempt(15)
+)
 def do_process_block(n):
     # Create table if it doesn't exist
     create_table()

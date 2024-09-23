@@ -227,7 +227,7 @@ def get_coldkeys_and_stakes(hotkeys, block_timestamp, block_hash, block_number):
         coldkeys_and_stakes[hotkey] = (coldkey, stake)
 
     # periodically clear out historical keys
-    if len(coldkey_stake_cache) > 5_000_000:
+    if len(coldkey_stake_cache) > 1_000_000:
         print("Clearing historical coldkey_stake_cache")
         deleted = 0
         keys_to_delete = []
