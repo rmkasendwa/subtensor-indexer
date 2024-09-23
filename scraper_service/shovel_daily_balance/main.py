@@ -48,12 +48,12 @@ def do_process_block(n, table_name):
 def main():
     # BalanceDailyMapShovel(name="balance_daily_map", skip_interval=7200).start()
     (block_timestamp, block_hash) = get_block_metadata(213337)
-    print("JADE!")
+    print("Start")
     print(block_hash)
     results = rust_bindings.query_block_balances(block_hash)
-    print("POJECHALEM!")
+    print("done!")
     print(results)
-    print("KONIEC")
+    print("end")
 
 
 if __name__ == "__main__":
