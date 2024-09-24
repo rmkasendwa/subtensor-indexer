@@ -70,6 +70,7 @@ type_map = {
     "info__image__Raw0": "String",
     "info__email__Raw0": "String",
     "info__twitter__Raw0": "String",
+    "info__web__Raw0": "String",
     "calls": "Array(String)",
     "call__call_args": "Array(String)"
 }
