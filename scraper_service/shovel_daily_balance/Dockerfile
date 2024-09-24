@@ -11,8 +11,6 @@ RUN apt-get -qq update
 RUN apt-get install -y -q \
   build-essential \
   curl
-RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Build and cache Rust deps
 # COPY ./shovel_daily_balance/rust_bindings/Cargo.toml /app/rust_bindings/Cargo.toml
@@ -24,13 +22,6 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 # RUN maturin build --release
 # RUN rm src/lib.rs
 # RUN rm -r /app/rust_bindings/target/wheels
-
-# Copy the rest of the Rust bindings and build
-WORKDIR /app
-COPY ./shovel_daily_balance/rust_bindings /app/rust_bindings
-WORKDIR /app/rust_bindings
-RUN maturin build --release
-RUN pip install /app/rust_bindings/target/wheels/*.whl
 
 WORKDIR /app
 COPY ./shared /app/shared
