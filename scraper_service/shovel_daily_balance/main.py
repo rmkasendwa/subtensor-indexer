@@ -29,7 +29,10 @@ def do_process_block(n, table_name):
             block_number UInt64 CODEC(Delta, ZSTD),
             timestamp DateTime CODEC(Delta, ZSTD),
             address String CODEC(ZSTD),
-            balance UInt64 CODEC(Delta, ZSTD)
+            free_balance UInt64 CODEC(Delta, ZSTD),
+            reserved_balance UInt64 CODEC(Delta, ZSTD),
+            misc_frozen_balance UInt64 CODEC(Delta, ZSTD),
+            fee_frozen_balance UInt64 CODEC(Delta, ZSTD)
         ) ENGINE = ReplacingMergeTree()
         PARTITION BY toYYYYMM(timestamp)
         ORDER BY (address, timestamp)
@@ -43,26 +46,31 @@ def do_process_block(n, table_name):
     for address, balance in results.items():
         buffer_insert(
             table_name,
-            [n, block_timestamp, f"'{address}'", balance]
+            [n, block_timestamp, f"'{address}'", balance["free"], balance["reserved"], balance["misc_frozen"], balance["fee_frozen"]]
         )
 
 
 def fetch_all_free_balances_at_block(block_hash):
     substrate = get_substrate_client()
-    balances = substrate.query_map(
+    raw_balances = substrate.query_map(
         module='System',
         storage_function='Account',
         block_hash=block_hash,
         page_size=1000
     )
 
-    free_balances = {}
-    for address in balances:
+    balances = {}
+    for address in raw_balances:
         address_id = address[0].value
         address_info = address[1]
-        free_balances[address_id] = address_info['data']['free']
+        balances[address_id] = {
+            'free': address_info['data']['free'],
+            'reserved': address_info['data']['reserved'],
+            'misc_frozen': address_info['data']['misc_frozen'],
+            'fee_frozen': address_info['data']['fee_frozen'],
+        }
 
-    return free_balances
+    return balances
 
 def main():
     BalanceDailyMapShovel(name="balance_daily_map", skip_interval=7200).start()
