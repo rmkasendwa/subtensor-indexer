@@ -31,8 +31,7 @@ def do_process_block(n, table_name):
             address String CODEC(ZSTD),
             free_balance UInt64 CODEC(Delta, ZSTD),
             reserved_balance UInt64 CODEC(Delta, ZSTD),
-            misc_frozen_balance UInt64 CODEC(Delta, ZSTD),
-            fee_frozen_balance UInt64 CODEC(Delta, ZSTD)
+            frozen_balance UInt64 CODEC(Delta, ZSTD)
         ) ENGINE = ReplacingMergeTree()
         PARTITION BY toYYYYMM(timestamp)
         ORDER BY (address, timestamp)
@@ -46,7 +45,7 @@ def do_process_block(n, table_name):
     for address, balance in results.items():
         buffer_insert(
             table_name,
-            [n, block_timestamp, f"'{address}'", balance["free"], balance["reserved"], balance["misc_frozen"], balance["fee_frozen"]]
+            [n, block_timestamp, f"'{address}'", balance["free"], balance["reserved"], balance["frozen"]]
         )
 
 
@@ -66,8 +65,7 @@ def fetch_all_free_balances_at_block(block_hash):
         balances[address_id] = {
             'free': address_info['data']['free'],
             'reserved': address_info['data']['reserved'],
-            'misc_frozen': address_info['data']['misc_frozen'],
-            'fee_frozen': address_info['data']['fee_frozen'],
+            'frozen': address_info['data']['frozen'] if 'frozen' in address_info['data'] else int(address_info['data']['misc_frozen'].value) + int(address_info['data']['fee_frozen'].value),
         }
 
     return balances
