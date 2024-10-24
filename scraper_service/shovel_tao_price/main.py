@@ -12,6 +12,8 @@ logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(process)d %(message)s")
 
 
+CMC_TAO_ID = 22974
+
 class TaoPriceShovel(ShovelBaseClass):
     table_name = "shovel_tao_price"
 
@@ -29,6 +31,7 @@ def do_process_block(self, n):
             timestamp DateTime CODEC(Delta, ZSTD),
             price Float64 CODEC(ZSTD),
             market_cap Float64 CODEC(ZSTD)
+            volume Float64 CODEC(ZSTD)
         ) ENGINE = ReplacingMergeTree()
         PARTITION BY toYYYYMM(timestamp)
         ORDER BY block_number
@@ -47,11 +50,10 @@ def do_process_block(self, n):
 
     buffer_insert(self.table_name, [n, block_timestamp])
 
-
 def fetch_tao_price():
     url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest"
     parameters = {
-        'symbol': 'TAO',
+        'id': CMC_TAO_ID,
         'convert': 'USD'
     }
     headers = {
