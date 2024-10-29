@@ -1,0 +1,78 @@
+name: Build and Push Docker Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        description: "Select environment"
+        required: true
+        options:
+          - finney
+          - testnet
+
+env:
+  REGISTRY: ghcr.io
+  ORGANIZATION: ${{ github.repository_owner }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Find directories with Dockerfiles
+        id: find_dirs
+        run: |
+          dirs=$(find . -maxdepth 2 -name Dockerfile -exec dirname {} \; | sed 's|^\./||' | jq -R -s -c 'split("\n")[:-1]')
+          echo "directories=$dirs" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v4
+        strategy:
+          matrix:
+            directory: ${{ fromJson(steps.find_dirs.outputs.directories) }}
+        with:
+          context: ${{ matrix.directory }}
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.ORGANIZATION }}/${{ matrix.directory }}:${{ github.sha }}
+
+      - name: Update YAML in other repository
+        env:
+          PAT: ${{ secrets.PAT_FOR_PRIVATE_REPO }}
+        run: |
+          git clone https://${PAT}@github.com/your-org/your-private-repo.git
+          cd your-private-repo
+
+          # Loop through each directory and update the corresponding YAML file
+          for dir in ${{ join(fromJson(steps.find_dirs.outputs.directories), ' ') }}; do
+            if [ "${{ github.event.inputs.environment }}" == "finney" ]; then
+              yaml_file="clusters/data-wearhouse-finney/indexers/${dir}.yaml"
+            elif [ "${{ github.event.inputs.environment }}" == "testnet" ]; then
+              yaml_file="clusters/data-wearhouse-testnet/indexers/${dir}.yaml"
+            fi
+            
+            if [ -f "$yaml_file" ]; then
+              sed -i 's|image: .*|image: ${{ env.REGISTRY }}/${{ env.ORGANIZATION }}/'${dir}':${{ github.sha }}|' "$yaml_file"
+            else
+              echo "Warning: $yaml_file not found"
+            fi
+          done
+
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add .
+          git commit -m "Update indexers on ${{github.events.inputs.environment}} tags to ${{ github.sha }}"
+          git push
