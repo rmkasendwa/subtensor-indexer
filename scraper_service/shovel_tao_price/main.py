@@ -1,13 +1,14 @@
 import logging
 import requests
 import os
-from shared.clickhouse.batch_insert import buffer_insert
-from shared.shovel_base_class import ShovelBaseClass
-from shared.substrate import get_substrate_client
-from shared.clickhouse.utils import (
-    get_clickhouse_client,
-    table_exists,
-)
+from datetime import datetime
+# from shared.clickhouse.batch_insert import buffer_insert
+# from shared.shovel_base_class import ShovelBaseClass
+# from shared.substrate import get_substrate_client
+# from shared.clickhouse.utils import (
+#     get_clickhouse_client,
+#     table_exists,
+# )
 
 
 logging.basicConfig(level=logging.INFO,
@@ -16,50 +17,55 @@ logging.basicConfig(level=logging.INFO,
 
 CMC_TAO_ID = 22974
 CMC_TOKEN = os.getenv("CMC_TOKEN")
+FIRST_TAO_LISTING_DAY = datetime(2023, 3, 6)
 
-class TaoPriceShovel(ShovelBaseClass):
-    table_name = "shovel_tao_price"
+# class TaoPriceShovel(ShovelBaseClass):
+#     table_name = "shovel_tao_price"
 
-    def process_block(self, n):
-        do_process_block(n, self.table_name)
+#     def process_block(self, n):
+#         do_process_block(n, self.table_name)
 
 
-def do_process_block(n, table_name):
-    substrate = get_substrate_client()
+# def do_process_block(n, table_name):
+#     substrate = get_substrate_client()
 
-    if not table_exists(table_name):
-        query = f"""
-        CREATE TABLE IF NOT EXISTS {table_name} (
-            timestamp DateTime CODEC(Delta, ZSTD),
-            price Float64 CODEC(ZSTD),
-            market_cap Float64 CODEC(ZSTD)
-            volume Float64 CODEC(ZSTD)
-        ) ENGINE = ReplacingMergeTree()
-        PARTITION BY toYYYYMM(timestamp)
-        ORDER BY block_number
-        """
-        get_clickhouse_client().execute(query)
+#     if not table_exists(table_name):
+#         query = f"""
+#         CREATE TABLE IF NOT EXISTS {table_name} (
+#             timestamp DateTime CODEC(Delta, ZSTD),
+#             price Float64 CODEC(ZSTD),
+#             market_cap Float64 CODEC(ZSTD)
+#             volume Float64 CODEC(ZSTD)
+#         ) ENGINE = ReplacingMergeTree()
+#         PARTITION BY toYYYYMM(timestamp)
+#         ORDER BY block_number
+#         """
+#         get_clickhouse_client().execute(query)
 
-    block_hash = substrate.get_block_hash(n)
-    block_timestamp = int(
-        substrate.query(
-            "Timestamp",
-            "Now",
-            block_hash=block_hash,
-        ).serialize()
-        / 1000
-    )
+#     block_hash = substrate.get_block_hash(n)
+#     block_timestamp = int(
+#         substrate.query(
+#             "Timestamp",
+#             "Now",
+#             block_hash=block_hash,
+#         ).serialize()
+#         / 1000
+#     )
 
-    buffer_insert(self.table_name, [n, block_timestamp])
+#     buffer_insert(table_name, [n, block_timestamp])
+
 
 def first_run():
     'elo'
 
-def fetch_tao_price():
+def fetch_historical_price():
     url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/historical"
     parameters = {
         'id': CMC_TAO_ID,
         'convert': 'USD',
+        'interval': 'daily',
+        'time_start': FIRST_TAO_LISTING_DAY.strftime('%Y-%m-%d'),
+        'count': min((datetime.now() - FIRST_TAO_LISTING_DAY).days, 700)
     }
     headers = {
         'Accepts': 'application/json',
@@ -69,18 +75,24 @@ def fetch_tao_price():
     response = requests.get(url, headers=headers, params=parameters)
     data = response.json()
 
-    if response.status_code == 200 and 'data' in data and 'TAO' in data['data']:
-        tao_data = data['data']['TAO']
-        price = tao_data['quote']['USD']['price']
-        market_cap = tao_data['quote']['USD']['market_cap']
-        volume = tao_data['quote']['USD']['volume_24h']
-        return price, market_cap, volume
+    if response.status_code == 200 and 'data' in data and 'quotes' in data['data']:
+        quotes = data['data']['quotes']
+        results = []
+        for quote in quotes:
+            usd_quote = quote['quote']['USD']
+            price = usd_quote['price']
+            market_cap = usd_quote['market_cap']
+            volume = usd_quote['volume_24h']
+            results.append((price, market_cap, volume))
+        return results
     else:
         logging.error("Failed to fetch TAO price: %s", data.get('status', {}).get('error_message', 'Unknown error'))
-        return None, None, None
+        return []
 
 def main():
-    TaoPriceShovel(name="tao_price").start()
+    res = fetch_historical_price()
+    print(res)
+    # TaoPriceShovel(name="tao_price").start()
 
 
 if __name__ == "__main__":
