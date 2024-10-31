@@ -60,9 +60,9 @@ jobs:
             if [ -f "${dir}Dockerfile" ]; then
               dir_name=$(basename "$dir")
               if [ "${{ github.event.inputs.environment }}" == "finney" ]; then
-                yaml_file="ops-setup/clusters/data-wearhouse-finney/indexers/${dir}.yaml"
+                yaml_file="ops-setup/clusters/data-warehouse-finney/indexers/${dir}.yaml"
               elif [ "${{ github.event.inputs.environment }}" == "testnet" ]; then
-                yaml_file="ops-setup/clusters/data-wearhouse-testnet/indexers/${dir}.yaml"
+                yaml_file="ops-setup/clusters/data-warehouse-testnet/indexers/${dir}.yaml"
               fi
             
               if [ -f "$yaml_file" ]; then
