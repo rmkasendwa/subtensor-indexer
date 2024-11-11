@@ -13,34 +13,31 @@ def fetch_cmc_data(params, endpoint):
         'Accepts': 'application/json',
         'X-CMC_PRO_API_KEY': CMC_TOKEN
     }
+
     response = requests.get(url, headers=headers, params=params)
     return response.json(), response.status_code
 
-def get_historical_prices():
+def get_price_by_time(timestamp):
     parameters = {
         'id': CMC_TAO_ID,
         'convert': 'USD',
         'interval': '24h',
-        'time_start': FIRST_TAO_LISTING_DAY.strftime('%Y-%m-%d') + 'T21:37:00',
-        'count': min((datetime.now() - FIRST_TAO_LISTING_DAY).days, 700)
+        'time_start': timestamp,
+        'count': 1
     }
 
     data, status_code = fetch_cmc_data(parameters, 'historical')
 
     if status_code == 200 and 'data' in data and 'quotes' in data['data']:
-        quotes = data['data']['quotes']
-        results = []
-        for quote in quotes:
-            timestamp = quote['timestamp']
-            usd_quote = quote['quote']['USD']
-            price = usd_quote['price']
-            market_cap = usd_quote['market_cap']
-            volume = usd_quote['volume_24h']
-            results.append((timestamp, price, market_cap, volume))
-        return results
+        quote = data['data']['quotes'][0]
+        usd_quote = quote['quote']['USD']
+        price = usd_quote['price']
+        market_cap = usd_quote['market_cap']
+        volume = usd_quote['volume_24h']
+        return price, market_cap, volume
     else:
         logging.error("Failed to fetch TAO price: %s", data.get('status', {}).get('error_message', 'Unknown error'))
-        return []
+        return None
 
 def get_latest_price():
     parameters = {

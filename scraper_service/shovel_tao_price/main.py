@@ -1,5 +1,6 @@
 import logging
-from cmc_client import get_historical_prices, get_latest_price
+
+from cmc_client import get_price_by_time
 from shared.clickhouse.batch_insert import buffer_insert
 from shared.shovel_base_class import ShovelBaseClass
 from shared.substrate import get_substrate_client
@@ -7,8 +8,13 @@ from shared.clickhouse.utils import (
     get_clickhouse_client,
     table_exists,
 )
+from tenacity import retry, wait_fixed
 
 BLOCKS_A_DAY = (24 * 60 * 60) / 12
+BLOCKS_IN_5_MINUTES = 5 * 60 / 12
+
+# After this block change the interval from daily to every 5 mins
+THRESHOLD_BLOCK = 4249779
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(process)d %(message)s")
@@ -16,21 +22,31 @@ logging.basicConfig(level=logging.INFO,
 
 class TaoPriceShovel(ShovelBaseClass):
     table_name = "shovel_tao_price"
+    starting_block=2137
 
     def process_block(self, n):
-        # `skip_interval` has a hiccup sometimes
-        # for unknown reasons
-        if n % BLOCKS_A_DAY != 0:
+        if n == -1:
             return
 
+        # `skip_interval` has a hiccup sometimes
+        # for unknown reasons and its not elastic
+        # enough to handle conditions
+        if n > THRESHOLD_BLOCK:
+            if n % BLOCKS_IN_5_MINUTES != 0:
+                return
+        else:
+            if n % BLOCKS_A_DAY != 0:
+                return
         do_process_block(n, self.table_name)
 
-
+@retry(
+    wait=wait_fixed(60),
+)
 def do_process_block(n, table_name):
     substrate = get_substrate_client()
 
     if not table_exists(table_name):
-        first_run()
+        first_run(table_name)
 
     block_hash = substrate.get_block_hash(n)
     block_timestamp = int(
@@ -41,10 +57,14 @@ def do_process_block(n, table_name):
         ).serialize()
         / 1000
     )
-    latest_price_data = get_latest_price()
+
+    latest_price_data = get_price_by_time(block_timestamp)
 
     if latest_price_data:
         buffer_insert(table_name, [block_timestamp, *latest_price_data])
+    else:
+        raise Exception("Rate limit error encountered. Waiting before retrying...")
+
 
 
 
@@ -60,10 +80,6 @@ def first_run(table_name):
     ORDER BY timestamp
     """
     get_clickhouse_client().execute(query)
-
-    historical_prices = get_historical_prices()
-    for record in historical_prices:
-        buffer_insert(table_name, record)
 
 
 def main():
