@@ -8,6 +8,7 @@ from shared.clickhouse.utils import (
     table_exists,
 )
 
+BLOCKS_A_DAY = (24 * 60 * 60) / 12
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(process)d %(message)s")
@@ -17,6 +18,11 @@ class TaoPriceShovel(ShovelBaseClass):
     table_name = "shovel_tao_price"
 
     def process_block(self, n):
+        # `skip_interval` has a hiccup sometimes
+        # for unknown reasons
+        if n % BLOCKS_A_DAY != 0:
+            return
+
         do_process_block(n, self.table_name)
 
 
