@@ -1,6 +1,6 @@
 import logging
 
-from cmc_client import get_price_by_time
+from cmc_client import get_price_by_time, CMC_TOKEN
 from shared.clickhouse.batch_insert import buffer_insert
 from shared.shovel_base_class import ShovelBaseClass
 from shared.substrate import get_substrate_client
@@ -83,7 +83,10 @@ def first_run(table_name):
 
 
 def main():
-    TaoPriceShovel(name="tao_price").start()
+    if not CMC_TOKEN:
+        logging.error("CMC_TOKEN is not set. Doing nothing...")
+    else:
+        TaoPriceShovel(name="tao_price").start()
 
 
 if __name__ == "__main__":
