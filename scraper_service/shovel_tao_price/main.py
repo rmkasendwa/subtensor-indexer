@@ -58,7 +58,7 @@ FIRST_TAO_LISTING_DAY = datetime(2023, 3, 6)
 def first_run():
     'elo'
 
-def fetch_historical_price():
+def fetch_historical_prices():
     url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/historical"
     parameters = {
         'id': CMC_TAO_ID,
@@ -79,18 +79,19 @@ def fetch_historical_price():
         quotes = data['data']['quotes']
         results = []
         for quote in quotes:
+            timestamp = quote['timestamp']
             usd_quote = quote['quote']['USD']
             price = usd_quote['price']
             market_cap = usd_quote['market_cap']
             volume = usd_quote['volume_24h']
-            results.append((price, market_cap, volume))
+            results.append((timestamp, price, market_cap, volume))
         return results
     else:
         logging.error("Failed to fetch TAO price: %s", data.get('status', {}).get('error_message', 'Unknown error'))
         return []
 
 def main():
-    res = fetch_historical_price()
+    res = fetch_historical_prices()
     print(res)
     # TaoPriceShovel(name="tao_price").start()
 
