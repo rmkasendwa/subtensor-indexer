@@ -18,18 +18,6 @@ Shovels are written in Python, and share common functions found under `scraper_s
 
 All a shoves needs to define is a function to execute for every block number. Shared logic such as connecting to the Clickhouse DB, walking historical blocks, and keeping up with new finalized blocks is handled under the hood.
 
-## Shovels
-
-- [x] Timestamp Shovel
-- [x] Events Shovel
-- [x] Extrinsics Shovel
-- [x] Hotkey Owner Map Shovel
-- [ ] Account Stake Map Shovel
-- [ ] Account Balances Map Shovel
-- [ ] Aggregate Stake Events Shovel
-- [ ] Aggregate Balance Events Shovel
-- [ ] Metagraph Shovel
-
 ### Implementors Guide
 
 Want to add a new shovel? READ THIS!
@@ -94,3 +82,24 @@ vi .env
 ```
 docker compose up --build
 ```
+
+## Common Issues
+
+### Rust Bindings don't work when started in Docker
+
+Comment out
+
+```
+# Build and cache Rust deps
+# COPY ./shovel_subnets/rust_bindings/Cargo.toml /app/rust_bindings/Cargo.toml
+# COPY ./shovel_subnets/rust_bindings/Cargo.lock /app/rust_bindings/Cargo.lock
+# COPY ./shovel_subnets/rust_bindings/pyproject.toml /app/rust_bindings/pyproject.toml
+# WORKDIR /app/rust_bindings
+# RUN mkdir src && echo "fn main() {}" > src/lib.rs
+# RUN cargo fetch
+# RUN maturin build --release
+# RUN rm src/lib.rs
+# RUN rm /app/rust_bindings/target/wheels/*
+```
+
+from the Dockerfile of the problematic shovel, build the image, and then uncomment it again.
