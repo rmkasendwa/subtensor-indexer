@@ -16,6 +16,7 @@ class ShovelBaseClass:
     last_buffer_flush_call_block_number = 0
     name = None
     skip_interval = 1
+    starting_block = 0
 
     def __init__(self, name, skip_interval=1):
         """
@@ -117,4 +118,4 @@ class ShovelBaseClass:
         if res:
             return res[0][0]
         else:
-            return 0
+            return self.starting_block
