@@ -36,7 +36,7 @@ def get_price_by_time(timestamp):
         volume = usd_quote['volume_24h']
         return price, market_cap, volume
     else:
-        logging.error("Failed to fetch TAO price: %s", data.get('status', {}).get('error_message', 'Unknown error'))
+        logging.error("Failed to fetch TAO price with parameters %s: %s", parameters, data.get('status', {}).get('error_message', 'Unknown error'))
         return None
 
 def get_latest_price():

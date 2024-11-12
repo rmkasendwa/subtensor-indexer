@@ -25,9 +25,6 @@ class TaoPriceShovel(ShovelBaseClass):
     starting_block=2137
 
     def process_block(self, n):
-        if n == -1:
-            return
-
         # `skip_interval` has a hiccup sometimes
         # for unknown reasons and its not elastic
         # enough to handle conditions
@@ -40,7 +37,7 @@ class TaoPriceShovel(ShovelBaseClass):
         do_process_block(n, self.table_name)
 
 @retry(
-    wait=wait_fixed(60),
+    wait=wait_fixed(30),
 )
 def do_process_block(n, table_name):
     substrate = get_substrate_client()
@@ -57,6 +54,9 @@ def do_process_block(n, table_name):
         ).serialize()
         / 1000
     )
+
+    if block_timestamp == 0:
+        return
 
     latest_price_data = get_price_by_time(block_timestamp)
 
