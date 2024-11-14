@@ -1,7 +1,7 @@
 import requests
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 CMC_TAO_ID = 22974
 CMC_TOKEN = os.getenv("CMC_TOKEN")
@@ -18,15 +18,30 @@ def fetch_cmc_data(params, endpoint):
     return response.json(), response.status_code
 
 def get_price_by_time(timestamp):
+
+
+    # Calculate the time 48 hours ago from now
+    time_48_hours_ago = datetime.now() - timedelta(hours=48)
+
+    # Determine the interval based on the timestamp
+    if datetime.fromtimestamp(timestamp) > time_48_hours_ago:
+        interval = '5m'
+    else:
+        interval = '24h'
+
     parameters = {
         'id': CMC_TAO_ID,
         'convert': 'USD',
-        'interval': '24h',
+        'interval': interval,
         'time_start': timestamp,
         'count': 1
     }
 
-    data, status_code = fetch_cmc_data(parameters, 'historical')
+    try:
+        data, status_code = fetch_cmc_data(parameters, 'historical')
+    except Exception as e:
+        logging.error("Error fetching CMC data: %s", str(e))
+        return None
 
     if status_code == 200 and 'data' in data and 'quotes' in data['data']:
         quote = data['data']['quotes'][0]
