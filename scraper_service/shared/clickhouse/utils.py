@@ -43,7 +43,8 @@ RESERVED_KEYWORDS = {
 
 
 def escape_column_name(column_name):
-    if column_name.upper() in RESERVED_KEYWORDS:
+    # . is a reserved character
+    if column_name.upper() in RESERVED_KEYWORDS or "." in column_name:
         return f"`{column_name}`"
     return column_name
 
