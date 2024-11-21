@@ -34,7 +34,11 @@ def get_column_type(value, value_type=None, key=None):
             inner = value[0]
             # Only use Array if the inner value will have a proper type, otherwise, just
             # stringify it.
-            if isinstance(inner, str) or isinstance(inner, int) or isinstance(inner, float):
+            if (
+                isinstance(inner, str)
+                or isinstance(inner, int)
+                or isinstance(inner, float)
+            ):
                 return f"Array({get_column_type(inner)})"
             else:
                 return "String"
@@ -72,7 +76,8 @@ type_map = {
     "info__twitter__Raw0": "String",
     "info__web__Raw0": "String",
     "calls": "Array(String)",
-    "call__call_args": "Array(String)"
+    "call__call_args": "Array(String)",
+    "children": "Array(Tuple(UInt64, String))",
 }
 
 
@@ -122,9 +127,7 @@ def create_clickhouse_table(table_name, column_names, column_types):
     )
     column_definitions = ", ".join(columns)
 
-    order_by = [
-        "call_module", "call_function", "timestamp", "extrinsic_index"
-    ]
+    order_by = ["call_module", "call_function", "timestamp", "extrinsic_index"]
 
     sql = f"""
     CREATE TABLE IF NOT EXISTS {table_name} (
