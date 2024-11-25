@@ -28,8 +28,8 @@ def do_process_block(n, table_name):
         CREATE TABLE IF NOT EXISTS {table_name} (
             block_number UInt64 CODEC(Delta, ZSTD),
             timestamp DateTime CODEC(Delta, ZSTD),
-            hotkey String CODEC(ZSTD),
             coldkey String CODEC(ZSTD),
+            hotkey String CODEC(ZSTD),
             stake UInt64 CODEC(Delta, ZSTD)
         ) ENGINE = ReplacingMergeTree()
         PARTITION BY toYYYYMM(timestamp)
@@ -41,11 +41,11 @@ def do_process_block(n, table_name):
     results = rust_bindings.query_block_stakes(block_hash)
     print(f"Processing block {n}. Found {len(results)} stake entries")
     for result in results:
-        hotkey = result[0]
         coldkey, stake = result[1][0]
+        hotkey = result[0]
         buffer_insert(
             table_name,
-            [n, block_timestamp, f"'{hotkey}'", f"'{coldkey}'", stake]
+            [n, block_timestamp, f"'{coldkey}'", f"'{hotkey}'", stake]
         )
 
 

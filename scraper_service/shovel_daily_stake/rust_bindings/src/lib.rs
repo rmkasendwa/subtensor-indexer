@@ -36,8 +36,8 @@ async fn query_block_stakes_inner(
     let mut kvs: Vec<(String, Vec<(String, u64)>)> = Vec::new();
 
     while let Some(Ok(kv)) = iter.next().await {
-        let coldkey_bytes: [u8; 32] = kv.key_bytes[kv.key_bytes.len() - 32..].try_into().unwrap();
-        let hotkey_bytes: [u8; 32] = kv.key_bytes[kv.key_bytes.len() - 64..kv.key_bytes.len() - 32].try_into().unwrap();
+        let coldkey_bytes: [u8; 32] = kv.key_bytes[kv.key_bytes.len() - 64..kv.key_bytes.len() - 32].try_into().unwrap();
+        let hotkey_bytes: [u8; 32] = kv.key_bytes[kv.key_bytes.len() - 32..].try_into().unwrap();
         let coldkey = AccountId32::from(coldkey_bytes).to_string();
         let hotkey = AccountId32::from(hotkey_bytes).to_string();
         kvs.push((coldkey, vec![(hotkey, kv.value)]));
