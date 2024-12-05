@@ -1,6 +1,7 @@
 from datetime import datetime
 from tqdm import tqdm
 import time
+import os
 import rust_bindings
 from shared.substrate import get_substrate_client
 from shared.clickhouse.utils import (
@@ -71,7 +72,7 @@ def get_axon_cache():
 def refresh_axon_cache(block_timestamp, block_hash, block_number):
     global axon_cache
 
-    extrinsics_synced_block_query = "SELECT block_number FROM test_db.shovel_checkpoints FINAL WHERE shovel_name = 'extrinsics';"
+    extrinsics_synced_block_query = f"SELECT block_number FROM shovel_checkpoints FINAL WHERE shovel_name = 'extrinsics';"
     extrinsics_synced_block = get_clickhouse_client().execute(
         extrinsics_synced_block_query)[0][0]
 
@@ -182,8 +183,8 @@ def get_coldkeys_and_stakes(hotkeys, block_timestamp, block_hash, block_number):
                         hotkey,
                         coldkey,
                         stake
-                    FROM test_db.shovel_hotkey_owner_map AS o
-                    INNER JOIN test_db.shovel_stake_double_map AS s
+                    FROM shovel_hotkey_owner_map AS o
+                    INNER JOIN shovel_stake_double_map AS s
                     ON o.timestamp = s.timestamp AND o.coldkey = s.coldkey AND o.hotkey = s.hotkey
                     WHERE hotkey IN {hotkeys_str}
                     AND timestamp >= '{formatted_date}' AND timestamp < addMinutes('{formatted_date}', 30)
