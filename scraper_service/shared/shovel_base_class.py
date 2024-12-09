@@ -16,7 +16,6 @@ class ShovelBaseClass:
     last_buffer_flush_call_block_number = 0
     name = None
     skip_interval = 1
-    starting_block = 0
 
     def __init__(self, name, skip_interval=1):
         """
@@ -24,6 +23,7 @@ class ShovelBaseClass:
         """
         self.name = name
         self.skip_interval = skip_interval
+        self.starting_block = 0  # Default value, can be overridden by subclasses
 
     def start(self):
         print("Initialising Substrate client")

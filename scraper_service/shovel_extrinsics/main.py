@@ -2,11 +2,12 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 
 from shared.block_metadata import get_block_metadata
 from shared.clickhouse.batch_insert import buffer_insert
-from shared.shovel_base_class import ShovelBaseClass
-from shared.substrate import get_substrate_client, reconnect_substrate
 from shared.clickhouse.utils import (
+    get_clickhouse_client,
     table_exists,
 )
+from shared.shovel_base_class import ShovelBaseClass
+from shared.substrate import get_substrate_client, reconnect_substrate
 import logging
 
 from shovel_extrinsics.utils import (
@@ -22,6 +23,22 @@ logging.basicConfig(level=logging.INFO,
 
 
 class ExtrinsicsShovel(ShovelBaseClass):
+    def get_checkpoint(self):
+        if not table_exists("shovel_checkpoints"):
+            return self.starting_block - 1  # Subtract 1 because the loop adds 1
+        query = f"""
+            SELECT block_number
+            FROM shovel_checkpoints
+            WHERE shovel_name = '{self.name}'
+            ORDER BY block_number DESC
+            LIMIT 1
+        """
+        res = get_clickhouse_client().execute(query)
+        if res:
+            return res[0][0]
+        else:
+            return self.starting_block - 1  # Subtract 1 because the loop adds 1
+
     def process_block(self, n):
         do_process_block(n)
 
