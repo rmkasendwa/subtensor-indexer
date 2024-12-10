@@ -23,21 +23,9 @@ logging.basicConfig(level=logging.INFO,
 
 
 class ExtrinsicsShovel(ShovelBaseClass):
-    def get_checkpoint(self):
-        if not table_exists("shovel_checkpoints"):
-            return self.starting_block - 1  # Subtract 1 because the loop adds 1
-        query = f"""
-            SELECT block_number
-            FROM shovel_checkpoints
-            WHERE shovel_name = '{self.name}'
-            ORDER BY block_number DESC
-            LIMIT 1
-        """
-        res = get_clickhouse_client().execute(query)
-        if res:
-            return res[0][0]
-        else:
-            return self.starting_block - 1  # Subtract 1 because the loop adds 1
+    def __init__(self, name):
+        super().__init__(name)
+        self.starting_block = 4400892
 
     def process_block(self, n):
         do_process_block(n)
