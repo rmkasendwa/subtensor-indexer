@@ -11,9 +11,9 @@ from shared.clickhouse.utils import (
 from tenacity import retry, wait_fixed
 
 BLOCKS_A_DAY = (24 * 60 * 60) / 12
-BLOCKS_IN_5_MINUTES = 5 * 60 / 12
+BLOCKS_IN_36_S = 36/12
 
-# After this block change the interval from daily to every 5 mins
+# After this block change the interval from daily to every 36s
 THRESHOLD_BLOCK = 4249779
 
 logging.basicConfig(level=logging.INFO,
@@ -29,7 +29,7 @@ class TaoPriceShovel(ShovelBaseClass):
         # for unknown reasons and its not elastic
         # enough to handle conditions
         if n > THRESHOLD_BLOCK:
-            if n % BLOCKS_IN_5_MINUTES != 0:
+            if n % BLOCKS_IN_36_S != 0:
                 return
         else:
             if n % BLOCKS_A_DAY != 0:
@@ -64,7 +64,6 @@ def do_process_block(n, table_name):
         buffer_insert(table_name, [block_timestamp, *latest_price_data])
     else:
         raise Exception("Rate limit error encountered. Waiting before retrying...")
-
 
 
 
