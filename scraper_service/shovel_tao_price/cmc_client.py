@@ -18,16 +18,22 @@ def fetch_cmc_data(params, endpoint):
     return response.json(), response.status_code
 
 def get_price_by_time(timestamp):
-
+    logging.info(f"Getting price for timestamp {timestamp}")
 
     # Calculate the time 48 hours ago from now
     time_48_hours_ago = datetime.now() - timedelta(hours=48)
+    logging.info(f"48 hours ago: {time_48_hours_ago}")
 
     # Determine the interval based on the timestamp
-    if datetime.fromtimestamp(timestamp) > time_48_hours_ago:
+    timestamp_dt = datetime.fromtimestamp(timestamp)
+    logging.info(f"Timestamp as datetime: {timestamp_dt}")
+
+    if timestamp_dt > time_48_hours_ago:
         interval = '5m'
+        logging.info("Using 5m interval (within last 48 hours)")
     else:
         interval = '24h'
+        logging.info("Using 24h interval (older than 48 hours)")
 
     parameters = {
         'id': CMC_TAO_ID,
@@ -36,22 +42,29 @@ def get_price_by_time(timestamp):
         'time_start': timestamp,
         'count': 1
     }
+    logging.info(f"Request parameters: {parameters}")
 
     try:
+        logging.info("Fetching data from CMC API...")
         data, status_code = fetch_cmc_data(parameters, 'historical')
+        logging.info(f"Got response with status code: {status_code}")
     except Exception as e:
         logging.error("Error fetching CMC data: %s", str(e))
+        logging.error("Full exception:", exc_info=True)
         return None
 
     if status_code == 200 and 'data' in data and 'quotes' in data['data']:
+        logging.info("Successfully parsed response data")
         quote = data['data']['quotes'][0]
         usd_quote = quote['quote']['USD']
         price = usd_quote['price']
         market_cap = usd_quote['market_cap']
         volume = usd_quote['volume_24h']
+        logging.info(f"Returning price={price}, market_cap={market_cap}, volume={volume}")
         return price, market_cap, volume
     else:
         logging.error("Failed to fetch TAO price with parameters %s: %s", parameters, data.get('status', {}).get('error_message', 'Unknown error'))
+        logging.error(f"Full response data: {data}")
         return None
 
 def get_latest_price():

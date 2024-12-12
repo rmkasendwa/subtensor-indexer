@@ -11,9 +11,9 @@ from shared.clickhouse.utils import (
 from tenacity import retry, wait_fixed
 
 BLOCKS_A_DAY = (24 * 60 * 60) / 12
-BLOCKS_IN_36_S = 36/12
+FETCH_EVERY_N_BLOCKS = (60 * 5) / 12;
 
-# After this block change the interval from daily to every 36s
+# After this block change the interval from daily to every 5 mins
 THRESHOLD_BLOCK = 4249779
 
 logging.basicConfig(level=logging.INFO,
@@ -31,7 +31,7 @@ class TaoPriceShovel(ShovelBaseClass):
         # enough to handle conditions
         if n > THRESHOLD_BLOCK:
             logging.info("1")
-            if n % BLOCKS_IN_36_S != 0:
+            if n % FETCH_EVERY_N_BLOCKS != 0:
                 logging.info("2")
                 return
         else:
