@@ -55,6 +55,9 @@ def get_price_by_time(timestamp):
 
     if status_code == 200 and 'data' in data and 'quotes' in data['data']:
         logging.info("Successfully parsed response data")
+        if not data['data']['quotes']:
+            logging.info("No quotes data available, skipping")
+            return None
         quote = data['data']['quotes'][0]
         usd_quote = quote['quote']['USD']
         price = usd_quote['price']
