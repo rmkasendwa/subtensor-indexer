@@ -51,7 +51,7 @@ def do_process_block(self, n):
         except Exception as e:
             raise ShovelProcessingError(f"Failed to get block timestamp from substrate: {str(e)}")
 
-        if block_timestamp == 0:
+        if block_timestamp == 0 and n != 0:
             raise ShovelProcessingError(f"Invalid block timestamp (0) for block {n}")
 
         try:
