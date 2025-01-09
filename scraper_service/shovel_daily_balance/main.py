@@ -5,6 +5,7 @@ from shared.clickhouse.batch_insert import buffer_insert
 from shared.clickhouse.utils import get_clickhouse_client, table_exists
 from shared.shovel_base_class import ShovelBaseClass
 from shared.substrate import get_substrate_client, reconnect_substrate
+from shared.exceptions import DatabaseConnectionError, ShovelProcessingError
 from tenacity import retry, stop_after_attempt, wait_fixed
 
 logging.basicConfig(level=logging.INFO,
@@ -17,58 +18,92 @@ class BalanceDailyMapShovel(ShovelBaseClass):
         do_process_block(n, self.table_name)
 
 
-@retry(
-    wait=wait_fixed(2),
-    before_sleep=lambda _: reconnect_substrate(),
-    stop=stop_after_attempt(15)
-)
 def do_process_block(n, table_name):
-    if not table_exists(table_name):
-        query = f"""
-        CREATE TABLE IF NOT EXISTS {table_name} (
-            block_number UInt64 CODEC(Delta, ZSTD),
-            timestamp DateTime CODEC(Delta, ZSTD),
-            address String CODEC(ZSTD),
-            free_balance UInt64 CODEC(Delta, ZSTD),
-            reserved_balance UInt64 CODEC(Delta, ZSTD),
-            frozen_balance UInt64 CODEC(Delta, ZSTD)
-        ) ENGINE = ReplacingMergeTree()
-        PARTITION BY toYYYYMM(timestamp)
-        ORDER BY (address, timestamp)
-        """
-        get_clickhouse_client().execute(query)
+    try:
+        # Create table if it doesn't exist
+        try:
+            if not table_exists(table_name):
+                query = f"""
+                CREATE TABLE IF NOT EXISTS {table_name} (
+                    block_number UInt64 CODEC(Delta, ZSTD),
+                    timestamp DateTime CODEC(Delta, ZSTD),
+                    address String CODEC(ZSTD),
+                    free_balance UInt64 CODEC(Delta, ZSTD),
+                    reserved_balance UInt64 CODEC(Delta, ZSTD),
+                    frozen_balance UInt64 CODEC(Delta, ZSTD)
+                ) ENGINE = ReplacingMergeTree()
+                PARTITION BY toYYYYMM(timestamp)
+                ORDER BY (address, timestamp)
+                """
+                get_clickhouse_client().execute(query)
+        except Exception as e:
+            raise DatabaseConnectionError(f"Failed to create/check table: {str(e)}")
 
-    (block_timestamp, block_hash) = get_block_metadata(n)
+        try:
+            (block_timestamp, block_hash) = get_block_metadata(n)
+        except Exception as e:
+            raise ShovelProcessingError(f"Failed to get block metadata: {str(e)}")
 
-    results = fetch_all_free_balances_at_block(block_hash)
-    print(f"Processing block {n}. Found {len(results)} balance entries")
-    for address, balance in results.items():
-        buffer_insert(
-            table_name,
-            [n, block_timestamp, f"'{address}'", balance["free"], balance["reserved"], balance["frozen"]]
-        )
+        try:
+            results = fetch_all_free_balances_at_block(block_hash)
+        except Exception as e:
+            raise ShovelProcessingError(f"Failed to fetch balances from substrate: {str(e)}")
+
+        if not results:
+            raise ShovelProcessingError(f"No balance data returned for block {n}")
+
+        logging.info(f"Processing block {n}. Found {len(results)} balance entries")
+
+        try:
+            for address, balance in results.items():
+                buffer_insert(
+                    table_name,
+                    [n, block_timestamp, f"'{address}'", balance["free"], balance["reserved"], balance["frozen"]]
+                )
+        except Exception as e:
+            raise DatabaseConnectionError(f"Failed to insert data into buffer: {str(e)}")
+
+    except (DatabaseConnectionError, ShovelProcessingError):
+        # Re-raise these exceptions to be handled by the base class
+        raise
+    except Exception as e:
+        # Convert unexpected exceptions to ShovelProcessingError
+        raise ShovelProcessingError(f"Unexpected error processing block {n}: {str(e)}")
 
 
 def fetch_all_free_balances_at_block(block_hash):
-    substrate = get_substrate_client()
-    raw_balances = substrate.query_map(
-        module='System',
-        storage_function='Account',
-        block_hash=block_hash,
-        page_size=1000
-    )
+    """Fetch all balances at a given block hash."""
+    try:
+        substrate = get_substrate_client()
+        raw_balances = substrate.query_map(
+            module='System',
+            storage_function='Account',
+            block_hash=block_hash,
+            page_size=1000
+        )
 
-    balances = {}
-    for address in raw_balances:
-        address_id = address[0].value
-        address_info = address[1]
-        balances[address_id] = {
-            'free': address_info['data']['free'],
-            'reserved': address_info['data']['reserved'],
-            'frozen': address_info['data']['frozen'] if 'frozen' in address_info['data'] else int(address_info['data']['misc_frozen'].value) + int(address_info['data']['fee_frozen'].value),
-        }
+        if not raw_balances:
+            raise ShovelProcessingError("No balance data returned from substrate")
 
-    return balances
+        balances = {}
+        for address in raw_balances:
+            try:
+                address_id = address[0].value
+                address_info = address[1]
+                balances[address_id] = {
+                    'free': address_info['data']['free'],
+                    'reserved': address_info['data']['reserved'],
+                    'frozen': address_info['data']['frozen'] if 'frozen' in address_info['data'] else int(address_info['data']['misc_frozen'].value) + int(address_info['data']['fee_frozen'].value),
+                }
+            except (KeyError, ValueError) as e:
+                logging.warning(f"Skipping malformed account data for {address}: {str(e)}")
+                continue
+
+        return balances
+
+    except Exception as e:
+        raise ShovelProcessingError(f"Error fetching balances: {str(e)}")
+
 
 def main():
     BalanceDailyMapShovel(name="balance_daily_map", skip_interval=7200).start()
