@@ -43,10 +43,12 @@ class ShovelBaseClass:
                 # Start the clickhouse buffer
                 print("Starting Clickhouse buffer")
                 executor = ThreadPoolExecutor(max_workers=1)
-                threading.Thread(
+                buffer_thread = threading.Thread(
                     target=flush_buffer,
                     args=(executor, self._buffer_flush_started, self._buffer_flush_done),
-                ).start()
+                    daemon=True  # Make it a daemon thread so it exits with the main thread
+                )
+                buffer_thread.start()
 
                 last_scraped_block_number = self.get_checkpoint()
                 logging.info(f"Last scraped block is {last_scraped_block_number}")
