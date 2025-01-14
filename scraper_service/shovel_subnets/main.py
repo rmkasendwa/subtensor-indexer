@@ -1,5 +1,4 @@
 from shared.substrate import reconnect_substrate
-from tenacity import retry, stop_after_attempt, wait_fixed
 from shared.block_metadata import get_block_metadata
 from shared.clickhouse.batch_insert import buffer_insert
 from shared.shovel_base_class import ShovelBaseClass
@@ -23,11 +22,6 @@ class SubnetsShovel(ShovelBaseClass):
             raise ShovelProcessingError(f"Failed to process block {n}: {str(e)}")
 
 
-@retry(
-    wait=wait_fixed(2),
-    before_sleep=lambda _: reconnect_substrate(),
-    stop=stop_after_attempt(15)
-)
 def do_process_block(n):
     try:
         # Create table if it doesn't exist

@@ -1,5 +1,3 @@
-from tenacity import retry, stop_after_attempt, wait_fixed
-
 from shared.block_metadata import get_block_metadata
 from shared.clickhouse.batch_insert import buffer_insert
 from shared.clickhouse.utils import (

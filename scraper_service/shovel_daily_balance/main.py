@@ -6,7 +6,6 @@ from shared.clickhouse.utils import get_clickhouse_client, table_exists
 from shared.shovel_base_class import ShovelBaseClass
 from shared.substrate import get_substrate_client, reconnect_substrate
 from shared.exceptions import DatabaseConnectionError, ShovelProcessingError
-from tenacity import retry, stop_after_attempt, wait_fixed
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(process)d %(message)s")
