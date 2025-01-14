@@ -5,7 +5,7 @@ from shared.clickhouse.utils import (
     get_clickhouse_client,
     table_exists,
 )
-from shared.exceptions import ShovelException, DatabaseConnectionError, ShovelProcessingError
+from shared.exceptions import DatabaseConnectionError, ShovelProcessingError
 from tqdm import tqdm
 import logging
 import threading
