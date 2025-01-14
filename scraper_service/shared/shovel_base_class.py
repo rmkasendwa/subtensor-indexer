@@ -141,7 +141,18 @@ class ShovelBaseClass:
 
     def get_checkpoint(self):
         if not table_exists("shovel_checkpoints"):
-            return self.starting_block - 1
+            return max(0, self.starting_block - 1)
+
+        # First check if our shovel has any entries
+        query = f"""
+            SELECT count(*)
+            FROM shovel_checkpoints
+            WHERE shovel_name = '{self.name}'
+        """
+        count = get_clickhouse_client().execute(query)[0][0]
+        if count == 0:
+            return max(0, self.starting_block - 1)
+
         query = f"""
             SELECT block_number
             FROM shovel_checkpoints
@@ -153,4 +164,4 @@ class ShovelBaseClass:
         if res:
             return res[0][0]
         else:
-            return self.starting_block - 1
+            return max(0, self.starting_block - 1)  # This case shouldn't happen due to count check above
