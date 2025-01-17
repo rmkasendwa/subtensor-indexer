@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(process)d %(message)s")
 
 
-class BlockTimestampShovel(ShovelBaseClass):
+class AlphaToTaoShovel(ShovelBaseClass):
     table_name = "shovel_alpha_to_tao"
 
     def process_block(self, n):
@@ -30,9 +30,11 @@ def do_process_block(self, n):
                 CREATE TABLE IF NOT EXISTS {self.table_name} (
                     block_number UInt64 CODEC(Delta, ZSTD),
                     timestamp DateTime CODEC(Delta, ZSTD),
+                    netuid UInt8 CODEC(Delta, ZSTD),
+                    alpha Float64 CODEC(ZSTD)
                 ) ENGINE = ReplacingMergeTree()
                 PARTITION BY toYYYYMM(timestamp)
-                ORDER BY block_number
+                ORDER BY (block_number, netuid)
                 """
                 get_clickhouse_client().execute(query)
         except Exception as e:
@@ -68,7 +70,7 @@ def do_process_block(self, n):
 
 
 def main():
-    BlockTimestampShovel(name="block_timestamps").start()
+    AlphaToTaoShovel(name="alpha_to_tao").start()
 
 
 if __name__ == "__main__":
