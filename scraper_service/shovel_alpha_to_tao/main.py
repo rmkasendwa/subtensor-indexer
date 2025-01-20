@@ -31,7 +31,7 @@ def do_process_block(self, n):
                     block_number UInt64 CODEC(Delta, ZSTD),
                     timestamp DateTime CODEC(Delta, ZSTD),
                     netuid UInt8 CODEC(Delta, ZSTD),
-                    alpha Float64 CODEC(ZSTD)
+                    alpha_to_tao Float64 CODEC(ZSTD)
                 ) ENGINE = ReplacingMergeTree()
                 PARTITION BY toYYYYMM(timestamp)
                 ORDER BY (block_number, netuid)
@@ -57,7 +57,38 @@ def do_process_block(self, n):
             raise ShovelProcessingError(f"Invalid block timestamp (0) for block {n}")
 
         try:
-            buffer_insert(self.table_name, [n, block_timestamp])
+            # Get list of active subnets
+            networks_added = substrate.query_map(
+                'SubtensorModule',
+                'NetworksAdded',
+                block_hash=block_hash
+            )
+            networks = [int(net[0].value) for net in networks_added]
+
+            # Process each subnet
+            for netuid in networks:
+                subnet_tao = float(str(substrate.query(
+                    'SubtensorModule',
+                    'SubnetTAO',
+                    [netuid],
+                    block_hash=block_hash
+                ).value).replace(',', '')) / 1e9
+
+                subnet_alpha_in = float(str(substrate.query(
+                    'SubtensorModule',
+                    'SubnetAlphaIn',
+                    [netuid],
+                    block_hash=block_hash
+                ).value).replace(',', '')) / 1e9
+
+                # Calculate exchange rate (TAO per Alpha)
+                alpha_to_tao = subnet_tao / subnet_alpha_in if subnet_alpha_in > 0 else 0
+
+                buffer_insert(
+                    self.table_name,
+                    [n, block_timestamp, netuid, alpha_to_tao]
+                )
+
         except Exception as e:
             raise DatabaseConnectionError(f"Failed to insert data into buffer: {str(e)}")
 
