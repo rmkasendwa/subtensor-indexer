@@ -6,6 +6,7 @@ from shared.clickhouse.utils import (
     table_exists,
 )
 from shared.exceptions import DatabaseConnectionError, ShovelProcessingError
+from shared.block_metadata import get_block_metadata
 import logging
 
 
@@ -41,20 +42,11 @@ def do_process_block(self, n):
             raise DatabaseConnectionError(f"Failed to create/check table: {str(e)}")
 
         try:
-            block_hash = substrate.get_block_hash(n)
-            block_timestamp = int(
-                substrate.query(
-                    "Timestamp",
-                    "Now",
-                    block_hash=block_hash,
-                ).serialize()
-                / 1000
-            )
+            block_timestamp, block_hash = get_block_metadata(n)
+            if block_timestamp == 0 and n != 0:
+                raise ShovelProcessingError(f"Invalid block timestamp (0) for block {n}")
         except Exception as e:
-            raise ShovelProcessingError(f"Failed to get block timestamp from substrate: {str(e)}")
-
-        if block_timestamp == 0 and n != 0:
-            raise ShovelProcessingError(f"Invalid block timestamp (0) for block {n}")
+            raise ShovelProcessingError(f"Failed to get block metadata: {str(e)}")
 
         try:
             # Get list of active subnets
