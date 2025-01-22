@@ -16,6 +16,11 @@ logging.basicConfig(level=logging.INFO,
 
 class AlphaToTaoShovel(ShovelBaseClass):
     table_name = "shovel_alpha_to_tao"
+    skip_interval = 7200
+
+    def __init__(self, name):
+        super().__init__(name, skip_interval=self.skip_interval)
+        self.starting_block = 3638246
 
     def process_block(self, n):
         do_process_block(self, n)
