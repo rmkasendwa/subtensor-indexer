@@ -59,19 +59,19 @@ def do_process_block(self, n):
 
             # Process each subnet
             for netuid in networks:
-                subnet_tao = float(str(substrate.query(
+                subnet_tao = substrate.query(
                     'SubtensorModule',
                     'SubnetTAO',
                     [netuid],
                     block_hash=block_hash
-                ).value).replace(',', '')) / 1e9
+                ).value / 1e9
 
-                subnet_alpha_in = float(str(substrate.query(
+                subnet_alpha_in = substrate.query(
                     'SubtensorModule',
                     'SubnetAlphaIn',
                     [netuid],
                     block_hash=block_hash
-                ).value).replace(',', '')) / 1e9
+                ).value / 1e9
 
                 # Calculate exchange rate (TAO per Alpha)
                 alpha_to_tao = subnet_tao / subnet_alpha_in if subnet_alpha_in > 0 else 0
