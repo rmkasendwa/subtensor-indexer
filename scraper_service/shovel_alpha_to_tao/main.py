@@ -17,7 +17,6 @@ BLOCKS_AN_HOUR = (60 * 60) / 12
 
 class AlphaToTaoShovel(ShovelBaseClass):
     table_name = "shovel_alpha_to_tao"
-    skip_interval = 7200
 
     def __init__(self, name):
         super().__init__(name, skip_interval=self.skip_interval)
