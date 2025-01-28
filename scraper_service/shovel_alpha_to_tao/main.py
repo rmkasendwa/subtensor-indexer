@@ -13,6 +13,7 @@ import logging
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(process)d %(message)s")
 
+BLOCKS_AN_HOUR = (60 * 60) / 12
 
 class AlphaToTaoShovel(ShovelBaseClass):
     table_name = "shovel_alpha_to_tao"
@@ -27,6 +28,10 @@ class AlphaToTaoShovel(ShovelBaseClass):
 
 
 def do_process_block(self, n):
+    # We don't need this data every block.
+    if n % BLOCKS_AN_HOUR != 0:
+        return
+
     try:
         substrate = get_substrate_client()
 
