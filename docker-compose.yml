@@ -221,6 +221,28 @@ services:
       - 'host.docker.internal:host-gateway'
     tty: true
 
+  shovel_alpha_to_tao:
+    build:
+      context: ./scraper_service
+      dockerfile: ./shovel_alpha_to_tao/Dockerfile
+    container_name: shovel_alpha_to_tao
+    depends_on:
+      clickhouse:
+        condition: service_started
+    env_file:
+      - .env
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+    networks:
+      - app_network
+    restart: on-failure
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    tty: true
+
   # shovel_balance_map:
   #   build:
   #     context: ./scraper_service
