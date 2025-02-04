@@ -71,6 +71,7 @@ type_map = {
     "info__additional": "Array(Tuple(String, String))",
     "info__legal__Raw0": "String",
     "info__riot__Raw0": "String",
+    "info__display__Raw0": "String",
     "info__image__Raw0": "String",
     "info__email__Raw0": "String",
     "info__twitter__Raw0": "String",
