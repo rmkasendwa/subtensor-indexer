@@ -24,6 +24,21 @@ def get_column_type(value):
         return "Int64"
     elif isinstance(value, float):
         return "Float64"
+    elif isinstance(value, list):
+        if len(value) > 0:
+            inner = value[0]
+            # Only use Array if the inner value will have a proper type, otherwise, just
+            # stringify it.
+            if (
+                isinstance(inner, str)
+                or isinstance(inner, int)
+                or isinstance(inner, float)
+            ):
+                return f"Array({get_column_type(inner)})"
+            else:
+                return "String"
+        else:
+            return "String"
     elif value is None:
         return None
     else:
