@@ -76,6 +76,7 @@ type_map = {
     "info__email__Raw0": "String",
     "info__twitter__Raw0": "String",
     "info__web__Raw0": "String",
+    "other_signatories": "Array(String)",
     "calls": "Array(String)",
     "call__call_args": "Array(String)",
     "transaction__EIP1559__access_list": "Array(String)",
