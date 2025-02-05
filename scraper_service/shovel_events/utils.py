@@ -1,3 +1,4 @@
+import json
 from functools import lru_cache
 from substrateinterface.base import is_valid_ss58_address
 from shared.clickhouse.utils import (
@@ -10,9 +11,17 @@ from shared.clickhouse.utils import (
 def format_value(value):
     """
     SQL requires strings to be wrapped in single quotes
+    Complex types like lists with dictionaries are serialized to JSON
     """
-    if isinstance(value, str):
+    if value is None:
+        return "NULL"
+    elif isinstance(value, str):
         return f"'{value}'"
+    elif isinstance(value, list):
+        if len(value) > 0 and all(isinstance(x, (str, int, float)) for x in value):
+            return value
+        else:
+            return f"'{json.dumps(value)}'"
     else:
         return value
 
