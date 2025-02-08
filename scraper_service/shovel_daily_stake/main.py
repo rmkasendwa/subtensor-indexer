@@ -77,7 +77,7 @@ def do_process_block(n, table_name):
 
 
 def main():
-    StakeDailyMapShovel(name="stake_daily_map", skip_interval=7200).start()
+    StakeDailyMapShovel(name="stake_daily_map").start()
 
 
 if __name__ == "__main__":

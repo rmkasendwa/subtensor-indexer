@@ -109,7 +109,7 @@ def fetch_all_free_balances_at_block(block_hash):
 
 
 def main():
-    BalanceDailyMapShovel(name="balance_daily_map", skip_interval=7200).start()
+    BalanceDailyMapShovel(name="balance_daily_map").start()
 
 
 if __name__ == "__main__":
