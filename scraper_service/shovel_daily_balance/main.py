@@ -10,6 +10,8 @@ from shared.exceptions import DatabaseConnectionError, ShovelProcessingError
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(process)d %(message)s")
 
+BLOCKS_PER_DAY = 7200
+
 class BalanceDailyMapShovel(ShovelBaseClass):
     table_name = "shovel_balance_daily_map"
 
@@ -18,6 +20,8 @@ class BalanceDailyMapShovel(ShovelBaseClass):
 
 
 def do_process_block(n, table_name):
+    if n % BLOCKS_PER_DAY != 0:
+        return
     try:
         # Create table if it doesn't exist
         try:
