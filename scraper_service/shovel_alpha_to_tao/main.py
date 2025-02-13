@@ -83,7 +83,7 @@ def do_process_block(self, n):
                 ).value / 1e9
 
                 # Calculate exchange rate (TAO per Alpha)
-                alpha_to_tao = subnet_tao / subnet_alpha_in if subnet_alpha_in > 0 else 0
+                alpha_to_tao = 1 if netuid == 0 else (subnet_tao / subnet_alpha_in if subnet_alpha_in > 0 else 0)
 
                 buffer_insert(
                     self.table_name,
