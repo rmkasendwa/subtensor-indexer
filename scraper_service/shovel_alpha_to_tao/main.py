@@ -20,7 +20,7 @@ class AlphaToTaoShovel(ShovelBaseClass):
 
     def __init__(self, name):
         super().__init__(name, skip_interval=self.skip_interval)
-        self.starting_block = 4947956
+        self.starting_block = 4920351
         # self.starting_block = 3638246
 
     def process_block(self, n):
