@@ -9,21 +9,28 @@ from shared.clickhouse.utils import (
 
 
 def format_value(value):
-    """
-    SQL requires strings to be wrapped in single quotes
-    Complex types like lists with dictionaries are serialized to JSON
-    """
     if value is None:
         return "NULL"
-    elif isinstance(value, str):
-        return f"'{value}'"
-    elif isinstance(value, list):
-        if len(value) > 0 and all(isinstance(x, (str, int, float)) for x in value):
-            return value
-        else:
-            return f"'{json.dumps(value)}'"
-    else:
+    elif isinstance(value, (int, float)):
         return value
+    elif isinstance(value, str):
+        escaped_value = value.replace("'", "\\'")
+        return f"'{escaped_value}'"
+    elif isinstance(value, list):
+        if len(value) > 0 and all(isinstance(x, (int, float)) for x in value):
+            return f"[{','.join(str(x) for x in value)}]"
+        elif len(value) > 0 and all(isinstance(x, str) for x in value):
+            escaped_strings = []
+            for x in value:
+                escaped = x.replace("'", "\\'")
+                escaped_strings.append(f"'{escaped}'")
+            return f"[{','.join(escaped_strings)}]"
+        else:
+            json_str = json.dumps(value).replace("'", "\\'")
+            return f"'{json_str}'"
+    else:
+        escaped = str(value).replace("'", "\\'")
+        return f"'{escaped}'"
 
 
 def get_column_type(value):
@@ -34,20 +41,7 @@ def get_column_type(value):
     elif isinstance(value, float):
         return "Float64"
     elif isinstance(value, list):
-        if len(value) > 0:
-            inner = value[0]
-            # Only use Array if the inner value will have a proper type, otherwise, just
-            # stringify it.
-            if (
-                isinstance(inner, str)
-                or isinstance(inner, int)
-                or isinstance(inner, float)
-            ):
-                return f"Array({get_column_type(inner)})"
-            else:
-                return "String"
-        else:
-            return "String"
+        return "String"
     elif value is None:
         return None
     else:
@@ -101,8 +95,7 @@ def create_clickhouse_table(table_name, column_names, column_types, values):
 
     columns = list(
         map(
-            lambda x, y: f"{escape_column_name(x)} {
-                y}",
+            lambda x, y: f"{escape_column_name(x)} {y}",
             column_names,
             column_types,
         )
