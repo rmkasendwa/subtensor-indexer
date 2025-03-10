@@ -11,13 +11,20 @@ def format_value(value, column_type=None):
     if value is None:
         return "NULL"
     elif isinstance(value, str):
-        # SQL requires strings to be wrapped in single quotes
-        return f"'{value}'"
+        # Use proper escaping for ClickHouse
+        # Escape backslashes first, then single quotes, then other special chars
+        escaped_value = value.replace('\\', '\\\\').replace("'", "\\'").replace('\n', '\\n').replace('\t', '\\t').replace('\r', '\\r')
+        return f"'{escaped_value}'"
     elif isinstance(value, list):
         if isinstance(column_type, str) and "Array" in column_type:
             return value
         else:
-            return f"'{json.dumps(value)}'"
+            # json.dumps() already handles escaping within the JSON itself
+            # We only need to escape single quotes for SQL string literal
+            json_str = json.dumps(value)
+            if "'" in json_str:
+                json_str = json_str.replace("'", "\\'")
+            return f"'{json_str}'"
     else:
         return value
 
