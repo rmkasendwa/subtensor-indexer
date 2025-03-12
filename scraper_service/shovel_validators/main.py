@@ -5,11 +5,10 @@ from shared.clickhouse.utils import (
     table_exists,
 )
 from shared.shovel_base_class import ShovelBaseClass
-from shared.substrate import get_substrate_client, reconnect_substrate
 from shared.exceptions import DatabaseConnectionError, ShovelProcessingError
+from substrate import get_substrate_client
 import logging
-from typing import Dict, List, Any, Optional
-from functools import lru_cache
+from typing import Dict, List, Any
 from typing import Union
 from scalecodec.utils.ss58 import ss58_encode
 
@@ -28,8 +27,6 @@ def decode_string(string: Union[str, tuple[int]]):
 logging.basicConfig(level=logging.INFO,
                    format="%(asctime)s %(process)d %(message)s")
 
-COMPOUNDING_PERIODS_PER_DAY = 7200
-
 def create_validators_table(table_name):
     if not table_exists(table_name):
         query = f"""
@@ -46,18 +43,12 @@ def create_validators_table(table_name):
             daily_return Float64,
             registrations Array(UInt64),
             validator_permits Array(UInt64),
-            apy Nullable(Float64),
             subnet_hotkey_alpha Map(UInt64, Float64)
         ) ENGINE = ReplacingMergeTree()
         ORDER BY (block_number, address)
         """
 
         get_clickhouse_client().execute(query)
-
-def calculate_apy_from_daily_return(return_per_1000: float, compounding_periods: int = COMPOUNDING_PERIODS_PER_DAY) -> float:
-    daily_return = return_per_1000 / 1000
-    apy = ((1 + (daily_return / compounding_periods)) ** (compounding_periods * 365)) - 1
-    return round(apy * 100, 3)
 
 def get_subnet_uids(substrate, block_hash: str) -> List[int]:
     try:
@@ -92,8 +83,7 @@ def is_registered_in_subnet(substrate, net_uid: int, address: str, block_hash: s
 def get_total_hotkey_alpha(substrate, address: str, net_uid: int, block_hash: str) -> float:
     try:
         result = substrate.query("SubtensorModule", "TotalHotkeyAlpha", [address, net_uid], block_hash=block_hash)
-        print(f"hotkey alpha {result}")
-        return float(str(result[0])) if result else 0.0
+        return float(result.value) if result.value else 0.0
     except Exception as e:
         logging.error(f"Failed to get total hotkey alpha for {address} in subnet {net_uid}: {str(e)}")
         return 0.0
@@ -113,11 +103,7 @@ def fetch_validator_info(substrate, address: str, block_hash: str, delegate_info
 
         owner = decode_account_id(chain_info.get('owner_ss58'))
 
-        if owner:
-            identity= substrate.query("SubtensorModule", "IdentitiesV2", [owner], block_hash=block_hash)
-            print(f"identity bytes {identity}")
-        else:
-            identity = None
+        identity = substrate.query("SubtensorModule", "IdentitiesV2", [owner], block_hash=block_hash)
 
         return {
             "name": decode_string(identity.get('name', address)) if identity else address,
@@ -146,12 +132,10 @@ def fetch_validator_stats(substrate, address: str, block_hash: str, delegate_inf
                 "daily_return": 0.0,
                 "registrations": [],
                 "validator_permits": [],
-                "apy": None,
                 "subnet_hotkey_alpha": {}
             }
 
         return_per_1000 = int(info['return_per_1000'], 16) if isinstance(info['return_per_1000'], str) else info['return_per_1000']
-        apy = calculate_apy_from_daily_return(return_per_1000)
 
         subnet_uids = get_subnet_uids(substrate, block_hash)
         subnet_hotkey_alpha = {}
@@ -161,13 +145,14 @@ def fetch_validator_stats(substrate, address: str, block_hash: str, delegate_inf
                 alpha = get_total_hotkey_alpha(substrate, address, net_uid, block_hash)
                 if alpha > 0:
                     subnet_hotkey_alpha[net_uid] = alpha
+                else:
+                    subnet_hotkey_alpha[net_uid] = 0
 
         return {
             "nominators": len(info.get('nominators', [])),
             "daily_return": info.get('total_daily_return', 0.0),
             "registrations": info.get('registrations', []),
             "validator_permits": info.get('validator_permits', []),
-            "apy": apy,
             "subnet_hotkey_alpha": subnet_hotkey_alpha
         }
     except Exception as e:
@@ -177,7 +162,6 @@ def fetch_validator_stats(substrate, address: str, block_hash: str, delegate_inf
             "daily_return": 0.0,
             "registrations": [],
             "validator_permits": [],
-            "apy": None,
             "subnet_hotkey_alpha": {}
         }
 
@@ -186,7 +170,7 @@ class ValidatorsShovel(ShovelBaseClass):
 
     def __init__(self, name):
         super().__init__(name)
-        self.starting_block = 4920351
+        self.starting_block = 5104800
 
     def process_block(self, n):
         if n % 7200 != 0:
@@ -214,21 +198,18 @@ class ValidatorsShovel(ShovelBaseClass):
                     values = [
                         n,
                         block_timestamp,
-                        info["name"],
-                        validator_address,
-                        info["image"],
-                        info["description"],
-                        info["owner"],
-                        info["url"],
+                        f"'{info['name']}'",
+                        f"'{validator_address}'",
+                        f"'{info['image']}'" if info['image'] else 'NULL',
+                        f"'{info['description']}'" if info['description'] else 'NULL',
+                        f"'{info['owner']}'" if info['owner'] else 'NULL',
+                        f"'{info['url']}'" if info['url'] else 'NULL',
                         stats["nominators"],
                         stats["daily_return"],
-                        stats["registrations"],
-                        stats["validator_permits"],
-                        stats["apy"],
-                        stats["subnet_hotkey_alpha"]
+                        f"[{','.join(str(x) for x in stats['registrations'])}]",
+                        f"[{','.join(str(x) for x in stats['validator_permits'])}]",
+                        f"{{{','.join(f'{k}:{v}' for k,v in stats['subnet_hotkey_alpha'].items())}}}" if stats['subnet_hotkey_alpha'] else '{}'
                     ]
-
-                    print(values)
 
                     buffer_insert(self.table_name, values)
 
