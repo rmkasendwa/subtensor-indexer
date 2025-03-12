@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
 # Add .cargo/bin to PATH
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-COPY ./requirements.txt /app/requirements.txt
+COPY ./shovel_validators/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY ./shared /app/shared
