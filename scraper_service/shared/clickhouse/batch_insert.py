@@ -4,10 +4,15 @@ from shared.clickhouse.utils import get_clickhouse_client
 import logging
 
 # Global debug flag
-DEBUG_MODE = False
+_DEBUG_MODE = False
+
+def set_debug_mode(enabled: bool):
+    global _DEBUG_MODE
+    _DEBUG_MODE = enabled
+    logging.info(f"ClickHouse debug mode {'enabled' if enabled else 'disabled'}")
 
 def debug_log(message: str):
-    if DEBUG_MODE:
+    if _DEBUG_MODE:
         logging.info(f"[ClickHouse DEBUG] {message}")
 
 buffer = {}

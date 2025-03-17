@@ -1,6 +1,6 @@
 from time import sleep
 from shared.block_metadata import get_block_metadata
-from shared.clickhouse.batch_insert import buffer_insert
+from shared.clickhouse.batch_insert import buffer_insert, set_debug_mode
 from shared.clickhouse.utils import (
     get_clickhouse_client,
     table_exists,
@@ -14,7 +14,7 @@ from typing import Union
 from scalecodec.utils.ss58 import ss58_encode
 
 from shared.clickhouse.batch_insert import DEBUG_MODE
-DEBUG_MODE = True
+set_debug_mode(True)
 
 SS58_FORMAT = 42
 
@@ -260,7 +260,7 @@ class ValidatorsShovel(ShovelBaseClass):
             raise
         except Exception as e:
             logging.error(f"Failed to process block {n}: {str(e)}")
-            raise ShovelProcessingError(f"Failed to process block {n}: {str(e)}")
+            raise DatabaseConnectionError(f"Failed to process block {n}: {str(e)}")
 
 def main():
     ValidatorsShovel(name="validators").start()
