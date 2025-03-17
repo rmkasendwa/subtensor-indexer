@@ -170,7 +170,7 @@ class ValidatorsShovel(ShovelBaseClass):
 
     def __init__(self, name):
         super().__init__(name)
-        self.starting_block = 5119200
+        self.starting_block = 5112000
 
     def process_block(self, n):
         if n % 7200 != 0:
@@ -242,6 +242,14 @@ class ValidatorsShovel(ShovelBaseClass):
             logging.info(f"- Total validators: {len(validators)}")
             logging.info(f"- Successful inserts: {successful_inserts}")
             logging.info(f"- Failed inserts: {len(validators) - successful_inserts}")
+
+            logging.info(f"Mannually updating shovel_checkpoints for block {n}")
+
+            buffer_insert(
+                "shovel_checkpoints",
+                [f"'{self.name}'", n],
+            )
+            logging.info(f"Done, processing another block")
 
         except DatabaseConnectionError as e:
             logging.error(f"Database connection error in block {n}: {str(e)}")
