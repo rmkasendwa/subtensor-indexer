@@ -170,7 +170,7 @@ class ValidatorsShovel(ShovelBaseClass):
 
     def __init__(self, name):
         super().__init__(name)
-        self.starting_block = 5104800
+        self.starting_block = 5112000
 
     def process_block(self, n):
         if n % 7200 != 0:
