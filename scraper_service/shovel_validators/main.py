@@ -170,7 +170,7 @@ class ValidatorsShovel(ShovelBaseClass):
 
     def __init__(self, name):
         super().__init__(name)
-        self.starting_block = 5112000
+        self.starting_block = 5119200
 
     def process_block(self, n):
         if n % 7200 != 0:
@@ -204,10 +204,10 @@ class ValidatorsShovel(ShovelBaseClass):
                     logging.info(f"Processing validator {idx}/{len(validators)}: {validator_address}")
 
                     info = fetch_validator_info(substrate, validator_address, block_hash, delegate_info)
-                    logging.debug(f"Got validator info for {validator_address}: name={info['name']}, owner={info['owner']}")
+                    logging.info(f"Got validator info for {validator_address}: name={info['name']}, owner={info['owner']}")
 
                     stats = fetch_validator_stats(substrate, validator_address, block_hash, delegate_info)
-                    logging.debug(f"Got validator stats for {validator_address}: nominators={stats['nominators']}, registrations={stats['registrations']}")
+                    logging.info(f"Got validator stats for {validator_address}: nominators={stats['nominators']}, registrations={stats['registrations']}")
 
                     def escape_string(s):
                         if s is None:
