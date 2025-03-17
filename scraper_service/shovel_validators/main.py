@@ -13,7 +13,6 @@ from typing import Dict, List, Any
 from typing import Union
 from scalecodec.utils.ss58 import ss58_encode
 
-from shared.clickhouse.batch_insert import DEBUG_MODE
 set_debug_mode(True)
 
 SS58_FORMAT = 42
