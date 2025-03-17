@@ -1,3 +1,4 @@
+from time import sleep
 from shared.block_metadata import get_block_metadata
 from shared.clickhouse.batch_insert import buffer_insert
 from shared.clickhouse.utils import (
@@ -233,6 +234,7 @@ class ValidatorsShovel(ShovelBaseClass):
                     buffer_insert(self.table_name, values)
                     successful_inserts += 1
                     logging.info(f"Successfully processed validator {validator_address} ({idx}/{len(validators)})")
+                    sleep(0.3)
 
                 except Exception as e:
                     logging.error(f"Error processing validator {validator_address} ({idx}/{len(validators)}): {str(e)}")
