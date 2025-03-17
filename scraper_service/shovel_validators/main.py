@@ -13,6 +13,9 @@ from typing import Dict, List, Any
 from typing import Union
 from scalecodec.utils.ss58 import ss58_encode
 
+from shared.clickhouse.batch_insert import DEBUG_MODE
+DEBUG_MODE = True
+
 SS58_FORMAT = 42
 
 def decode_account_id(account_id_bytes: Union[tuple[int], tuple[tuple[int]]]):
@@ -234,7 +237,6 @@ class ValidatorsShovel(ShovelBaseClass):
                     buffer_insert(self.table_name, values)
                     successful_inserts += 1
                     logging.info(f"Successfully processed validator {validator_address} ({idx}/{len(validators)})")
-                    sleep(0.3)
 
                 except Exception as e:
                     logging.error(f"Error processing validator {validator_address} ({idx}/{len(validators)}): {str(e)}")
