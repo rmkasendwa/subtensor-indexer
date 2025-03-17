@@ -195,15 +195,20 @@ class ValidatorsShovel(ShovelBaseClass):
                     info = fetch_validator_info(substrate, validator_address, block_hash, delegate_info)
                     stats = fetch_validator_stats(substrate, validator_address, block_hash, delegate_info)
 
+                    def escape_string(s):
+                        if s is None:
+                            return 'NULL'
+                        return f"'{s.replace("'", "''")}'"
+
                     values = [
                         n,
                         block_timestamp,
-                        f"'{info['name']}'",
-                        f"'{validator_address}'",
-                        f"'{info['image']}'" if info['image'] else 'NULL',
-                        f"'{info['description']}'" if info['description'] else 'NULL',
-                        f"'{info['owner']}'" if info['owner'] else 'NULL',
-                        f"'{info['url']}'" if info['url'] else 'NULL',
+                        escape_string(info['name']),
+                        escape_string(validator_address),
+                        escape_string(info['image']),
+                        escape_string(info['description']),
+                        escape_string(info['owner']),
+                        escape_string(info['url']),
                         stats["nominators"],
                         stats["daily_return"],
                         f"[{','.join(str(x) for x in stats['registrations'])}]",
