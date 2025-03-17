@@ -176,24 +176,38 @@ class ValidatorsShovel(ShovelBaseClass):
         if n % 7200 != 0:
             return
         try:
+            logging.info(f"Processing block {n}")
             substrate = get_substrate_client()
+            logging.info("Got substrate client")
+
             (block_timestamp, block_hash) = get_block_metadata(n)
+            logging.info(f"Got block metadata: timestamp={block_timestamp}, hash={block_hash}")
 
             create_validators_table(self.table_name)
+            logging.info("Ensured validators table exists")
 
+            logging.info("Fetching delegate info...")
             delegate_info = substrate.runtime_call(
                 api="DelegateInfoRuntimeApi",
                 method="get_delegates",
                 params=[],
                 block_hash=block_hash
             ).value
+            logging.info(f"Got delegate info with {len(delegate_info)} entries")
 
             validators = get_active_validators(substrate, block_hash, delegate_info)
+            logging.info(f"Found {len(validators)} active validators")
 
-            for validator_address in validators:
+            successful_inserts = 0
+            for idx, validator_address in enumerate(validators, 1):
                 try:
+                    logging.info(f"Processing validator {idx}/{len(validators)}: {validator_address}")
+
                     info = fetch_validator_info(substrate, validator_address, block_hash, delegate_info)
+                    logging.debug(f"Got validator info for {validator_address}: name={info['name']}, owner={info['owner']}")
+
                     stats = fetch_validator_stats(substrate, validator_address, block_hash, delegate_info)
+                    logging.debug(f"Got validator stats for {validator_address}: nominators={stats['nominators']}, registrations={stats['registrations']}")
 
                     def escape_string(s):
                         if s is None:
@@ -217,14 +231,23 @@ class ValidatorsShovel(ShovelBaseClass):
                     ]
 
                     buffer_insert(self.table_name, values)
+                    successful_inserts += 1
+                    logging.info(f"Successfully processed validator {validator_address} ({idx}/{len(validators)})")
 
                 except Exception as e:
-                    logging.error(f"Error processing validator {validator_address}: {str(e)}")
+                    logging.error(f"Error processing validator {validator_address} ({idx}/{len(validators)}): {str(e)}")
                     continue
 
-        except DatabaseConnectionError:
+            logging.info(f"Block {n} summary:")
+            logging.info(f"- Total validators: {len(validators)}")
+            logging.info(f"- Successful inserts: {successful_inserts}")
+            logging.info(f"- Failed inserts: {len(validators) - successful_inserts}")
+
+        except DatabaseConnectionError as e:
+            logging.error(f"Database connection error in block {n}: {str(e)}")
             raise
         except Exception as e:
+            logging.error(f"Failed to process block {n}: {str(e)}")
             raise ShovelProcessingError(f"Failed to process block {n}: {str(e)}")
 
 def main():
