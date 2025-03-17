@@ -12,6 +12,7 @@ import logging
 from typing import Dict, List, Any
 from typing import Union
 from scalecodec.utils.ss58 import ss58_encode
+import traceback
 
 set_debug_mode(True)
 
@@ -259,7 +260,9 @@ class ValidatorsShovel(ShovelBaseClass):
             raise
         except Exception as e:
             logging.error(f"Failed to process block {n}: {str(e)}")
-            raise DatabaseConnectionError(f"Failed to process block {n}: {str(e)}")
+            logging.error("Stack trace:")
+            logging.error(traceback.format_exc())
+            raise ShovelProcessingError(f"Failed to process block {n}: {str(e)}")
 
 def main():
     ValidatorsShovel(name="validators").start()
