@@ -15,9 +15,9 @@ RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Build and cache Rust deps
-# COPY ./shovel_stake_map/rust_bindings/Cargo.toml /app/rust_bindings/Cargo.toml
-# COPY ./shovel_stake_map/rust_bindings/Cargo.lock /app/rust_bindings/Cargo.lock
-# COPY ./shovel_stake_map/rust_bindings/pyproject.toml /app/rust_bindings/pyproject.toml
+COPY ./shovel_stake_map/rust_bindings/Cargo.toml /app/rust_bindings/Cargo.toml
+COPY ./shovel_stake_map/rust_bindings/Cargo.lock /app/rust_bindings/Cargo.lock
+COPY ./shovel_stake_map/rust_bindings/pyproject.toml /app/rust_bindings/pyproject.toml
 # WORKDIR /app/rust_bindings
 # RUN mkdir src && echo "fn main() {}" > src/lib.rs
 # RUN cargo fetch

@@ -31,7 +31,6 @@ services:
     depends_on:
       clickhouse:
         condition: service_started
-        required: true
     env_file:
       - .env
     logging:
@@ -54,7 +53,6 @@ services:
     depends_on:
       clickhouse:
         condition: service_started
-        required: true
     env_file:
       - .env
     logging:
@@ -77,7 +75,6 @@ services:
     depends_on:
       clickhouse:
         condition: service_started
-        required: true
     env_file:
       - .env
     logging:
@@ -100,7 +97,6 @@ services:
     depends_on:
       clickhouse:
         condition: service_started
-        required: true
     env_file:
       - .env
     logging:
@@ -123,7 +119,6 @@ services:
     depends_on:
       clickhouse:
         condition: service_started
-        required: true
     env_file:
       - .env
     logging:
@@ -146,7 +141,6 @@ services:
     depends_on:
       clickhouse:
         condition: service_started
-        required: true
     env_file:
       - .env
     logging:
@@ -169,7 +163,6 @@ services:
     depends_on:
       clickhouse:
         condition: service_started
-        required: true
     env_file:
       - .env
     logging:
@@ -192,7 +185,6 @@ services:
     depends_on:
       clickhouse:
         condition: service_started
-        required: true
     env_file:
       - .env
     logging:
@@ -215,7 +207,6 @@ services:
     depends_on:
       clickhouse:
         condition: service_started
-        required: true
     env_file:
       - .env
     logging:
@@ -238,7 +229,6 @@ services:
     depends_on:
       clickhouse:
         condition: service_started
-        required: true
     env_file:
       - .env
     logging:
@@ -261,7 +251,6 @@ services:
     depends_on:
       clickhouse:
         condition: service_started
-        required: true
     env_file:
       - .env
     logging:
@@ -284,7 +273,6 @@ services:
   #   depends_on:
   #     clickhouse:
   #       condition: service_started
-  #       required: true
   #   env_file:
   #     - .env
   #   logging:
